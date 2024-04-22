@@ -6,7 +6,7 @@ from aiogram import Bot
 from aiogram.types import BotCommand
 from dotenv import dotenv_values
 
-from bot.main_router import dp
+from bot.routers.main_router import dp
 
 
 # Start logging
