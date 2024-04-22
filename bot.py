@@ -33,6 +33,7 @@ async def main() -> None:
     Setups bot and starts polling.
     """
     # Set bot commands for all languages and specially for russian
+    await bot.delete_my_commands()
     await bot.set_my_commands(commands=commands_en)
     await bot.set_my_commands(commands=commands_ru, language_code='ru')
     # Clear pending updates
