@@ -2,14 +2,13 @@ from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
 from db.connection import create_connection
-from db.user_status import user_exists
+from db.user_operations import user_exists
 
 
 class UserExists(BaseFilter):
     """
     Checks if user is present in users table in DB.
     """
-
     def __init__(self):
         super().__init__()
 
