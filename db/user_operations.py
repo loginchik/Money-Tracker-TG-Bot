@@ -1,6 +1,6 @@
 import asyncpg
 
-from .connection import create_connection
+from db.connection import create_connection
 
 
 async def user_exists(user_id: int, connection: asyncpg.Connection) -> bool:

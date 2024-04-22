@@ -7,9 +7,9 @@ from aiogram.fsm.context import FSMContext
 
 import db.user_operations
 from bot.filters.user_exists import UserExists
-from ..states.registration import RegistrationStates
-from ..states.new_income import NewIncomeStates
-from ..states.new_expense import NewExpenseStates
+from bot.states.registration import RegistrationStates
+from bot.states.new_income import NewIncomeStates
+from bot.states.new_expense import NewExpenseStates
 
 
 # Router to handle new records creation process
