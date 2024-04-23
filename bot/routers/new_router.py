@@ -17,7 +17,6 @@ from bot.states.new_income import NewIncomeStates
 from bot.states.new_expense import NewExpenseStates
 from bot.internal import check_input
 
-
 # Router to handle new records creation process
 new_record_router = Router()
 
@@ -103,27 +102,20 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
         # Create user and notify the user
         try:
             await db.user_operations.create_user(**user_data)
-            await callback.answer('You are registered successfully.')
+            state_data = await state.get_data()
+            initial_command = state_data['command']
+            await callback.answer(f'You are registered successfully.')
+            await callback.message.answer(initial_command)
+            await state.clear()
         except Exception as e:
             await callback.answer('Something went wrong. Please try again later')
             await state.clear()
             return
 
-        # Get initial command to continue process after registration
-        state_data = await state.get_data()
-        initial_command = state_data['command']
-        # Define function to continue process
-        if initial_command == '/add_expense':
-            await add_expense_init(message=callback.message)
-        elif initial_command == '/add_income':
-            await add_income_init(message=callback.message)
-
     elif decision == 'cancel_register':
         # Notify the user
         await callback.message.answer('Sorry, you have to register to get access to bot :_(')
-
-    # Clear state and state data
-    await state.clear()
+        await state.clear()
 
 
 """
@@ -140,6 +132,7 @@ async def add_expense_init(message: Message, state: FSMContext):
     :param state: FSM context.
     :return: Message.
     """
+    await state.clear()
     await state.set_state(NewExpenseStates.get_money_amount)
     await state.update_data(user_id=message.from_user.id)
     await message.answer('Money amount')
@@ -311,6 +304,7 @@ async def save_expense_data(message: Message, state: FSMContext):
     Saves current state data as expense into DB and closes the process.
     :param message: User message.
     :param state: FSM context.
+    :param user_table: User table name.
     :return: Message.
     """
     total_data = await state.get_data()

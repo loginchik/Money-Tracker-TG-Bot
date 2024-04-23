@@ -43,7 +43,8 @@ async def add_expense(user_id: int, amount: float, subcategory_id: int, event_ti
     """
     conn = await create_connection()
     pg_location = location.wkt if location is not None else None
-    query = '''INSERT INTO user_based.expense (user_id, amount, subcategory_id, event_time, location) 
+    query = f'''INSERT INTO user_based.expense_{user_id} 
+    (user_id, amount, subcategory, event_time, location) 
     VALUES ($1, $2, $3, $4, $5);'''
     await conn.execute(query, user_id, amount, subcategory_id, event_time, pg_location)
     await conn.close()
