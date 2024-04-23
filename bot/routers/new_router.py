@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
 import db.user_operations
+import db.income_operations
 from bot.filters.user_exists import UserExists
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
@@ -119,6 +120,7 @@ async def add_income_init(message: Message, state: FSMContext):
     :return: Message.
     """
     await state.set_state(NewIncomeStates.get_money_amount)
+    await state.update_data({'user_id': message.from_user.id})
     await message.answer('Money amount')
 
 
@@ -193,9 +195,14 @@ async def save_income_data_to_db(message: Message, state: FSMContext):
     :return: Message.
     """
     total_data = await state.get_data()
-    await message.answer(str(total_data))
+    await db.income_operations.add_income(
+        user_id=total_data['user_id'],
+        amount=total_data['amount'],
+        passive=total_data['passive'],
+        event_date=total_data['event_date']
+    )
+    await message.answer('Income data saved successfully.')
     await state.clear()
-    print(await state.get_data())
 
 
 @new_record_router.callback_query(NewIncomeStates.get_event_date)
