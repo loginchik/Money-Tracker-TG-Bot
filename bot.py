@@ -41,7 +41,7 @@ async def main() -> None:
     # Clear pending updates
     await bot.delete_webhook(drop_pending_updates=True)
     # Start the bot
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, debug=True)
 
 
 if __name__ == '__main__':
