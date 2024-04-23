@@ -1,9 +1,13 @@
-from aiogram import Router
+import re
+import datetime as dt
+
+from aiogram import Router, Bot
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types.inline_keyboard_button import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 import db.user_operations
 from bot.filters.user_exists import UserExists
@@ -22,9 +26,17 @@ register_inline_button_en = InlineKeyboardButton(text='Create account', callback
 dont_register_inline_button_en = InlineKeyboardButton(text='Cancel', callback_data='cancel_register')
 
 
+@new_record_router.message(Command(commands=['abort']))
+async def abort_process(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is not None:
+        await state.clear()
+        await message.answer('Process aborted')
+
+
 # If user is not registered, one is asked to register first
-@new_record_router.message(Command(commands='add_expense'), ~UserExists())
-@new_record_router.message(Command(commands='add_income'), ~UserExists())
+@new_record_router.message(Command(commands='add_expense'), ~UserExists(), StateFilter(None))
+@new_record_router.message(Command(commands='add_income'), ~UserExists(), StateFilter(None))
 async def add_expense(message: Message, state: FSMContext):
     """
     As fas as user is not registered, one gets notified and asked if they want to register.
@@ -59,7 +71,6 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
     :param state: Current FSM context.
     :return: Message.
     """
-
     # Get user decision from callback
     decision = callback.data
     # Remove markup from message to prevent button re-pushing
@@ -93,13 +104,155 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
 
 
 # If user is registered, process starts
-@new_record_router.message(Command(commands=['add_expense']), UserExists())
+@new_record_router.message(Command(commands=['add_expense']), UserExists(), StateFilter(None))
 async def add_expense_init(message: Message):
     await message.answer('New expense creation started')
 
 
 # If user is registered, process starts
-@new_record_router.message(Command(commands=['add_income']), UserExists())
-async def add_income_init(message: Message):
-    await message.answer('New income creation started')
+@new_record_router.message(Command(commands=['add_income']), UserExists(), StateFilter(None))
+async def add_income_init(message: Message, state: FSMContext):
+    """
+    Sets state to NewIncomeStates.get_money_amount and asks for money amount.
+    :param message: Message from user.
+    :param state: FSM context to set state.
+    :return: Message.
+    """
+    await state.set_state(NewIncomeStates.get_money_amount)
+    await message.answer('Money amount')
 
+
+async def get_income_active_status(message: Message, state: FSMContext):
+    """
+    Sets state to NewIncomeStates.get_active_status and asks for active/passive income status.
+    :param message: Message from user.
+    :param state: FSM context to set state.
+    :return: Message with inline keyboard markup.
+    """
+    await state.set_state(NewIncomeStates.get_active_status)
+    active_status_inline_keyboard = InlineKeyboardBuilder()
+    active_status_inline_keyboard.add(InlineKeyboardButton(text='Active', callback_data='active'))
+    active_status_inline_keyboard.add(InlineKeyboardButton(text='Passive', callback_data='passive'))
+    await message.answer('Active status', reply_markup=active_status_inline_keyboard.as_markup())
+
+
+@new_record_router.message(NewIncomeStates.get_money_amount)
+async def save_money_amount(message: Message, state: FSMContext):
+    """
+    Checks if money amount from user message can be converted into positive number. If so,
+    saves the value to state data and redirects to get_income_active_status. Otherwise,
+    asks for correct money amount.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message.
+    """
+    raw_money_amount = message.text.strip()
+    try:
+        raw_money_amount = raw_money_amount.replace(',', '.')
+        money_amount = float(raw_money_amount)
+        await state.update_data({'amount': money_amount})
+        await get_income_active_status(message, state)
+    except (ValueError, Exception):
+        await message.answer('Please send a number without, like 123.45 or 123')
+
+
+async def get_income_date(message: Message, state: FSMContext):
+    """
+    Asks for income date.
+    :param message: Message from user.
+    :param state: FSM context.
+    :return: Message with 'today' button.
+    """
+    await state.set_state(NewIncomeStates.get_event_date)
+    today_markup = InlineKeyboardBuilder()
+    today_markup.add(InlineKeyboardButton(text='Today', callback_data='today'))
+    await message.answer('Event date like 01.12.2024', reply_markup=today_markup.as_markup())
+
+
+@new_record_router.callback_query(NewIncomeStates.get_active_status)
+async def save_income_active_status(callback: CallbackQuery, state: FSMContext):
+    """
+    Converts user inline choice into boolean and redirects to get_income_date.
+    :param callback: User callback choice from active/passive income status keyboard.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await state.update_data({'passive': callback.data == 'passive'})
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await get_income_date(callback.message, state)
+
+
+async def save_income_data_to_db(message: Message, state: FSMContext):
+    """
+    Saves income data to DB and finished the creation process.
+    :param message: Message from user.
+    :param state: FSM context.
+    :return: Message.
+    """
+    total_data = await state.get_data()
+    await message.answer(str(total_data))
+    await state.clear()
+    print(await state.get_data())
+
+
+@new_record_router.callback_query(NewIncomeStates.get_event_date)
+async def save_income_date_from_callback(callback: CallbackQuery, state: FSMContext):
+    """
+    Saves today's date as event date into income data dict and redirects to get_income_date.
+    Keyboard is hidden after push.
+    :param callback: User push button event.
+    :param state: FSM context.
+    :return: Message.
+    """
+    if callback.data == 'today':
+        await state.update_data({'event_date': dt.date.today()})
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await save_income_data_to_db(callback.message, state)
+
+
+@new_record_router.message(NewIncomeStates.get_event_date)
+async def save_income_date_from_message(message: Message, state: FSMContext, bot: Bot):
+    """
+    Tries to extract date string from user message. If successful, redirects to save_income_data_to_db.
+    Otherwise, asks for correct date.
+
+    :param message: Message from user.
+    :param state: FSM context.
+    :return: Message.
+    """
+    def check_date(date: dt.date) -> bool:
+        return dt.date.today() >= date
+
+    # Remove 'today' button anyway
+    try:
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    raw_event_date = message.text.strip()
+    try:
+        # Immediate convert
+        event_date = dt.datetime.strptime(raw_event_date, '%d.%m.%Y').date()
+        if check_date(event_date):
+            await state.update_data({'event_date': event_date})
+        else:
+            await message.answer('This date has not happened yet')
+            return
+    except ValueError:
+        # Extract date string and convert it
+        date_pattern = r'(\d{1,2}\.\d{1,2}\.\d{4})'
+        try:
+            date_string_from_message = re.search(date_pattern, raw_event_date).group(1)
+            event_date = dt.datetime.strptime(date_string_from_message, '%d.%m.%Y').date()
+            if check_date(event_date):
+                await state.update_data({'event_date': event_date})
+            else:
+                await message.answer('This date has not happened yet')
+                return
+        except (AttributeError, Exception):
+            # Failed both times
+            await message.answer('Please send a correct date in format 01.12.2023')
+            return
+
+    # Save collected data to db
+    await save_income_data_to_db(message, state)

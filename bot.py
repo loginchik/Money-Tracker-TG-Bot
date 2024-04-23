@@ -20,11 +20,13 @@ bot = Bot(token=secrets['BOT_TOKEN'])
 commands_en = [
     BotCommand(command='add_expense', description='Add new expense'),
     BotCommand(command='add_income', description='Add new income'),
+    BotCommand(command='abort', description='Abort current process and erase temp data'),
 ]
 # List of commands applied to russian language
 commands_ru = [
     BotCommand(command='add_expense', description='Добавить новый расход'),
     BotCommand(command='add_income', description='Добавить новый доход'),
+    BotCommand(command='abort', description='Прервать текущий процесс и удалить временные данные'),
 ]
 
 
