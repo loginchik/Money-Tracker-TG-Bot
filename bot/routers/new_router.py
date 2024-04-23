@@ -1,4 +1,3 @@
-import re
 import datetime as dt
 
 from aiogram import Router, Bot
@@ -11,6 +10,7 @@ from aiogram.exceptions import TelegramBadRequest
 
 import db.user_operations
 import db.income_operations
+import db.expense_operations
 from bot.filters.user_exists import UserExists
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
@@ -28,12 +28,28 @@ register_inline_button_en = InlineKeyboardButton(text='Create account', callback
 dont_register_inline_button_en = InlineKeyboardButton(text='Cancel', callback_data='cancel_register')
 
 
-@new_record_router.message(Command(commands=['abort']))
+"""
+============ Abort the process ============
+"""
+
+
+@new_record_router.message(Command(commands=['abort']), ~StateFilter(None))
 async def abort_process(message: Message, state: FSMContext):
+    """
+    If any state is set, aborts the process and clears the state.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message.
+    """
     current_state = await state.get_state()
     if current_state is not None:
         await state.clear()
         await message.answer('Process aborted')
+
+
+"""
+============ User registration ============
+"""
 
 
 # If user is not registered, one is asked to register first
@@ -85,9 +101,13 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
             'tg_first_name': callback.from_user.first_name,
         }
         # Create user and notify the user
-        # TODO: exceptions
-        await db.user_operations.create_user(**user_data)
-        await callback.answer('You are registered successfully.')
+        try:
+            await db.user_operations.create_user(**user_data)
+            await callback.answer('You are registered successfully.')
+        except Exception as e:
+            await callback.answer('Something went wrong. Please try again later')
+            await state.clear()
+            return
 
         # Get initial command to continue process after registration
         state_data = await state.get_data()
@@ -106,10 +126,247 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
     await state.clear()
 
 
+"""
+============ New expense ============
+"""
+
+
 # If user is registered, process starts
 @new_record_router.message(Command(commands=['add_expense']), UserExists(), StateFilter(None))
-async def add_expense_init(message: Message):
+async def add_expense_init(message: Message, state: FSMContext):
+    """
+    Sets state to NewExpenseStates.get_money_amount and asks for money amount input.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await state.set_state(NewExpenseStates.get_money_amount)
+    await state.update_data(user_id=message.from_user.id)
     await message.answer('Money amount')
+
+
+async def get_expense_category(message: Message, state: FSMContext):
+    """
+    Generates categories inline keyboard and sends it to user.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message with inline keyboard.
+    """
+    categories_keyboard = InlineKeyboardBuilder()
+    categories = await db.expense_operations.get_expense_categories()
+    title_column = 'title_ru' if message.from_user.language_code == 'ru' else 'title_en'
+    for cat in categories:
+        button = InlineKeyboardButton(text=cat[title_column], callback_data=f'category:{cat["id"]}')
+        categories_keyboard.add(button)
+    categories_keyboard.adjust(2)
+    await message.answer('Chose category', reply_markup=categories_keyboard.as_markup())
+    await state.set_state(NewExpenseStates.get_category)
+
+
+@new_record_router.message(NewExpenseStates.get_money_amount)
+async def save_expense_amount(message: Message, state: FSMContext):
+    """
+    Saves money count if its correct and redirects to get_expense_category.
+    :param message: User message text.
+    :param state: FSM context.
+    :return: Message.
+    """
+    raw_money_count = message.text.strip()
+    money_amount, error_text = check_input.money_amount_from_user_message(raw_money_count)
+    if money_amount is not None:
+        await state.update_data(amount=money_amount)
+        await get_expense_category(message, state)
+    else:
+        await message.answer(error_text)
+
+
+async def get_expense_subcategory(message: Message, state: FSMContext):
+    """
+    Generates subcategory keyboard and sends it to user.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message with inline keyboard.
+    """
+    await state.set_state(NewExpenseStates.get_subcategory)
+    state_data = await state.get_data()
+    category_id = state_data['category']
+    subcategories = await db.expense_operations.get_expense_subcategories(category_id)
+    subcategories_keyboard = InlineKeyboardBuilder()
+    title_column = 'title_ru' if message.from_user.language_code == 'ru' else 'title_en'
+    for sub in subcategories:
+        button = InlineKeyboardButton(text=sub[title_column], callback_data=f'subcategory:{sub["id"]}')
+        subcategories_keyboard.add(button)
+    back_button = InlineKeyboardButton(text='Back to categories', callback_data='back')
+    subcategories_keyboard.add(back_button)
+    subcategories_keyboard.adjust(2)
+    await message.answer('Chose subcategory', reply_markup=subcategories_keyboard.as_markup())
+
+
+@new_record_router.callback_query(NewExpenseStates.get_category)
+async def save_expense_category(callback: CallbackQuery, state: FSMContext):
+    """
+    Saves chosen category and redirects to get_expense_subcategory.
+    :param callback: Callback query.
+    :param state: FSM context.
+    :return: Message.
+    """
+    if callback.data.startswith('category'):
+        user_expense_category = int(callback.data.split(':')[1])
+        await callback.message.edit_reply_markup(reply_markup=None)
+        await state.update_data(category=user_expense_category)
+        await get_expense_subcategory(callback.message, state)
+    else:
+        await callback.message.answer('Choose correct category')
+
+
+async def get_expense_datetime(message: Message, state: FSMContext):
+    """
+    Sets state to NewExpenseStates.get_datetime_amount and asks for datetime input.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message with 'now' button.
+    """
+    now_keyboard = InlineKeyboardBuilder()
+    now_keyboard.add(InlineKeyboardButton(text='Now', callback_data='now'))
+    await state.set_state(NewExpenseStates.get_datetime)
+    await message.answer('Send datetime in format like 01.12.2023 23:15', reply_markup=now_keyboard.as_markup())
+
+
+@new_record_router.callback_query(NewExpenseStates.get_subcategory)
+async def save_expense_subcategory(callback: CallbackQuery, state: FSMContext):
+    """
+    Gets callback data from subcategory keyboard. If 'back' button is pushed,
+    sets state to NewExpenseStates.get_category and redirects back to get_expense_category.
+    Otherwise, tries to save subcategory_id and redirects to get_expense_datetime.
+    :param callback: Callback query.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data == 'back':
+        await state.set_state(NewExpenseStates.get_category)
+        await get_expense_category(callback.message, state)
+    elif callback.data.startswith('subcategory'):
+        subcategory_id = int(callback.data.split(':')[1])
+        await state.update_data(subcategory=subcategory_id)
+        await get_expense_datetime(callback.message, state)
+    else:
+        await callback.message.answer('Choose correct subcategory')
+
+
+async def get_expense_location(message: Message, state: FSMContext):
+    """
+    Sets NewExpenseStates.get_location state and asks for location. Message contains skip button.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await state.set_state(NewExpenseStates.get_location)
+    skip_keyboard = InlineKeyboardBuilder()
+    skip_keyboard.add(InlineKeyboardButton(text='Skip', callback_data='no_location'))
+    await message.answer('Send location', reply_markup=skip_keyboard.as_markup())
+
+
+@new_record_router.callback_query(NewExpenseStates.get_datetime)
+async def save_expense_datetime_from_button(callback: CallbackQuery, state: FSMContext):
+    """
+    Saves current datetime as expense event datetime value and redirects to get_expense_location.
+    :param callback: Callback query.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data == 'now':
+        await state.update_data(event_datetime=dt.datetime.now())
+        await get_expense_location(callback.message, state)
+    else:
+        await get_expense_datetime(callback.message, state)
+
+
+@new_record_router.message(NewExpenseStates.get_datetime)
+async def save_expense_datetime_from_message(message: Message, state: FSMContext, bot: Bot):
+    """
+    If user message contains datetime, saves data and switches to get_expense_location.
+    :param message: User message text.
+    :param state: FSM context.
+    :return: Message.
+    """
+    try:
+        # Remove reply markup anyway
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1,
+                                            reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    event_datetime, error_text = check_input.event_datetime_from_user_message(message.text)
+    if event_datetime is not None:
+        await state.update_data(event_datetime=event_datetime)
+        await get_expense_location(message, state)
+    else:
+        await message.answer(error_text)
+
+
+async def save_expense_data(message: Message, state: FSMContext):
+    """
+    Saves current state data as expense into DB and closes the process.
+    :param message: User message.
+    :param state: FSM context.
+    :return: Message.
+    """
+    total_data = await state.get_data()
+    try:
+        await db.expense_operations.add_expense(
+            user_id=total_data['user_id'],
+            amount=total_data['amount'],
+            subcategory_id=total_data['subcategory'],
+            event_time=total_data['event_datetime'],
+            location=total_data['location']
+        )
+
+        await message.answer('Saved')
+    except Exception as e:
+        await message.answer('Failed to save data, please try again later.')
+    await state.clear()
+
+
+@new_record_router.callback_query(NewExpenseStates.get_location)
+async def skip_expense_location(callback: CallbackQuery, state: FSMContext):
+    """
+    Sets event location to None and redirects to save_expense_data.
+    :param callback: Callback query.
+    :param state: FSM context.
+    :return: Message.
+    """
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.update_data(location=None)
+    await save_expense_data(callback.message, state)
+
+
+@new_record_router.message(NewExpenseStates.get_location)
+async def save_expense_location(message: Message, state: FSMContext, bot: Bot):
+    """
+    If message contains location, saves it. Otherwise, asks again.
+    :param message: User message.
+    :param state: FSM context.
+    :param bot: Bot instance.
+    :return: Message.
+    """
+    try:
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    if message.location is not None:
+        geometry_point = check_input.tg_location_to_geometry(message.location)
+        await state.update_data(location=geometry_point)
+        await save_expense_data(message, state)
+    else:
+        await get_expense_location(message, state)
+
+
+"""
+============ New income ============
+"""
 
 
 # If user is registered, process starts
@@ -141,7 +398,7 @@ async def get_income_active_status(message: Message, state: FSMContext):
 
 
 @new_record_router.message(NewIncomeStates.get_money_amount)
-async def save_money_amount(message: Message, state: FSMContext):
+async def save_income_money_amount(message: Message, state: FSMContext):
     """
     Checks if money amount from user message can be converted into positive number. If so,
     saves the value to state data and redirects to get_income_active_status. Otherwise,
@@ -193,14 +450,16 @@ async def save_income_data_to_db(message: Message, state: FSMContext):
     :return: Message.
     """
     total_data = await state.get_data()
-    # TODO: exceptions
-    await db.income_operations.add_income(
-        user_id=total_data['user_id'],
-        amount=total_data['amount'],
-        passive=total_data['passive'],
-        event_date=total_data['event_date']
-    )
-    await message.answer('Income data saved successfully.')
+    try:
+        await db.income_operations.add_income(
+            user_id=total_data['user_id'],
+            amount=total_data['amount'],
+            passive=total_data['passive'],
+            event_date=total_data['event_date']
+        )
+        await message.answer('Income data saved successfully.')
+    except Exception as e:
+        await message.answer('Failed to save data, please try again later.')
     await state.clear()
 
 

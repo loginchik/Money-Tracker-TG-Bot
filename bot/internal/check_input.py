@@ -1,6 +1,10 @@
 import re
 import datetime as dt
 
+from shapely.geometry.point import Point
+from aiogram.types import Location
+
+
 def money_amount_from_user_message(user_message_text: str) -> [float | None, None | str]:
     """
     Tries to convert message text into positive float.
@@ -18,13 +22,18 @@ def money_amount_from_user_message(user_message_text: str) -> [float | None, Non
         return None, 'Please send a number without, like 123.45 or 123'
 
 
-def date_is_in_past(date: dt.date) -> bool:
+def date_is_in_past(date: dt.date | dt.datetime) -> bool:
     """
     Checks if date is today or earlier.
-    :param date: Date to check.
+    :param date: Date or datetime value to compare to now.
     :return: Comparison result.
     """
-    return dt.date.today() >= date
+    if isinstance(date, dt.date):
+        return dt.date.today() >= date
+    elif isinstance(date, dt.datetime):
+        return dt.datetime.now() >= date
+    else:
+        return False
 
 
 def event_date_from_user_message(user_message_text: str) -> [dt.date | None, None | str]:
@@ -53,3 +62,32 @@ def event_date_from_user_message(user_message_text: str) -> [dt.date | None, Non
         except (AttributeError, Exception):
             # Failed both times
             return None, 'Please send a correct date in format 01.12.2023'
+
+
+def event_datetime_from_user_message(user_message_text: str) -> [dt.datetime | None, None | str]:
+    """
+    Tries to convert message text to datetime in past or today.
+    :param user_message_text: User message text.
+    :return: Datetime or None.
+    """
+    try:
+        event_datetime = dt.datetime.strptime(user_message_text, '%d.%m.%Y %H:%M')
+        if date_is_in_past(event_datetime):
+            return event_datetime, None
+        else:
+            return None, 'This date has not happened yet'
+    except (ValueError, Exception):
+        try:
+            datetime_pattern = r'(\d{1,2}\.\d{1,2}\.\d{4} \d{1,2}\:\d{1,2})'
+            event_datetime_string = re.search(datetime_pattern, user_message_text).group(1)
+            event_datetime = dt.datetime.strptime(event_datetime_string, '%d.%m.%Y %H:%M')
+            if date_is_in_past(event_datetime):
+                return event_datetime, None
+            else:
+                return None, 'This date has not happened yet'
+        except (AttributeError, Exception):
+            return None, 'Please send a correct date in format 01.12.2023 23:15'
+
+
+def tg_location_to_geometry(tg_location: Location) -> Point:
+    return Point(tg_location.longitude, tg_location.latitude)
