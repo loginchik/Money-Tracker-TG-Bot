@@ -1,3 +1,7 @@
+"""
+Entry point for bot application to run.
+"""
+
 import asyncio
 import os.path
 import logging

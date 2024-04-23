@@ -1,3 +1,8 @@
+"""
+Package contains scripts that create connection to the database. Main function for export and
+external use is ``create_connection``.
+"""
+
 import os
 
 import asyncpg

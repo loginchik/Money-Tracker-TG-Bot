@@ -1,3 +1,14 @@
+"""
+Package contains scripts that are used to check user input and extract values from message texts.
+
++ ``money_amount_from_user_message`` function tries to convert user message text to float value.
++ ``date_is_in_past`` function checks that date or datetime instance provided is earlier than current date and time.
++ ``event_date_from_user_message`` function tries to convert user message text to date instance.
++ ``event_datetime_from_user_message`` function tries to convert user message text to datetime instance.
++ ``tg_location_to_geometry`` function converts telegram location instance into shapely point instance.
+"""
+
+
 import re
 import datetime as dt
 

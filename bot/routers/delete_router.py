@@ -1,3 +1,10 @@
+"""
+Package contains scripts to address delete queries to db. Supports user data deletion process.
+Runs on its own router - ``delete_router`` which must be included into main router or any other router
+that is included into main to be able to get and handle pending updates.
+"""
+
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message

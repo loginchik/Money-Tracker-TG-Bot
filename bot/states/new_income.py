@@ -1,3 +1,7 @@
+"""
+Contains states group for new income creation process.
+"""
+
 from aiogram.fsm.state import State, StatesGroup
 
 

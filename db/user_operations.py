@@ -1,3 +1,8 @@
+"""
+Package contains scripts that are dedicated to user operations, such as creating or deleting
+user record in table and all partition tables required.
+"""
+
 import logging
 
 import asyncpg

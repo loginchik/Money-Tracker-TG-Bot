@@ -1,3 +1,7 @@
+"""
+Package contains scripts that are dedicated to income operations.
+"""
+
 import datetime as dt
 
 from db.connection import create_connection

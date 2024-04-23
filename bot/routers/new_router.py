@@ -1,3 +1,13 @@
+"""
+Package contains scripts to add new records to db from user data. Package runs on its own router - ``new_record_router``
+which must be included into main router or any other included into main router to be able to get and handle
+pending updates.
+
+First section is dedicated to `new expense record`, the main functionality of the bot. Second section is dedicated
+to `income record creation`. Third section is dedicated to `create expense limit records`. All sections are handled
+by ``new_record_router``.
+"""
+
 import datetime as dt
 
 from aiogram import Router, Bot
@@ -496,3 +506,7 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
         await save_income_data_to_db(message, state)
     else:
         await message.answer(error_text)
+
+"""
+============ New expense limit ============
+"""

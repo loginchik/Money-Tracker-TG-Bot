@@ -1,3 +1,8 @@
+"""
+Package contains dispatcher, or main router. All the routers are connected to each other in the package.
+"""
+
+
 from aiogram import Dispatcher
 
 from bot.routers.new_router import new_record_router

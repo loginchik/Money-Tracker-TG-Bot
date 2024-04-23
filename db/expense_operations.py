@@ -1,3 +1,7 @@
+"""
+Package contains scripts that are dedicated to expense operations.
+"""
+
 import datetime as dt
 
 import asyncpg

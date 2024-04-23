@@ -1,3 +1,7 @@
+"""
+Contains states group for new expense creation process.
+"""
+
 from aiogram.fsm.state import StatesGroup, State
 
 

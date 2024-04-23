@@ -1,3 +1,7 @@
+"""
+Filter that checks if a user exists.
+"""
+
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
