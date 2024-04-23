@@ -150,8 +150,11 @@ async def save_money_amount(message: Message, state: FSMContext):
     try:
         raw_money_amount = raw_money_amount.replace(',', '.')
         money_amount = float(raw_money_amount)
-        await state.update_data({'amount': money_amount})
-        await get_income_active_status(message, state)
+        if money_amount > 0:
+            await state.update_data({'amount': money_amount})
+            await get_income_active_status(message, state)
+        else:
+            await message.answer('Sorry, money amount cannot be negative.')
     except (ValueError, Exception):
         await message.answer('Please send a number without, like 123.45 or 123')
 
