@@ -15,6 +15,7 @@ from bot.filters.user_exists import UserExists
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
 from bot.states.new_expense import NewExpenseStates
+from bot.internal import check_input
 
 
 # Router to handle new records creation process
@@ -84,6 +85,7 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
             'tg_first_name': callback.from_user.first_name,
         }
         # Create user and notify the user
+        # TODO: exceptions
         await db.user_operations.create_user(**user_data)
         await callback.answer('You are registered successfully.')
 
@@ -107,7 +109,7 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
 # If user is registered, process starts
 @new_record_router.message(Command(commands=['add_expense']), UserExists(), StateFilter(None))
 async def add_expense_init(message: Message):
-    await message.answer('New expense creation started')
+    await message.answer('Money amount')
 
 
 # If user is registered, process starts
@@ -149,16 +151,12 @@ async def save_money_amount(message: Message, state: FSMContext):
     :return: Message.
     """
     raw_money_amount = message.text.strip()
-    try:
-        raw_money_amount = raw_money_amount.replace(',', '.')
-        money_amount = float(raw_money_amount)
-        if money_amount > 0:
-            await state.update_data({'amount': money_amount})
-            await get_income_active_status(message, state)
-        else:
-            await message.answer('Sorry, money amount cannot be negative.')
-    except (ValueError, Exception):
-        await message.answer('Please send a number without, like 123.45 or 123')
+    money_amount, error_text = check_input.money_amount_from_user_message(raw_money_amount)
+    if money_amount is not None:
+        await state.update_data({'amount': money_amount})
+        await get_income_active_status(message, state)
+    else:
+        await message.answer(error_text)
 
 
 async def get_income_date(message: Message, state: FSMContext):
@@ -195,6 +193,7 @@ async def save_income_data_to_db(message: Message, state: FSMContext):
     :return: Message.
     """
     total_data = await state.get_data()
+    # TODO: exceptions
     await db.income_operations.add_income(
         user_id=total_data['user_id'],
         amount=total_data['amount'],
@@ -230,9 +229,6 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
     :param state: FSM context.
     :return: Message.
     """
-    def check_date(date: dt.date) -> bool:
-        return dt.date.today() >= date
-
     # Remove 'today' button anyway
     try:
         await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
@@ -240,29 +236,10 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
         pass
 
     raw_event_date = message.text.strip()
-    try:
-        # Immediate convert
-        event_date = dt.datetime.strptime(raw_event_date, '%d.%m.%Y').date()
-        if check_date(event_date):
-            await state.update_data({'event_date': event_date})
-        else:
-            await message.answer('This date has not happened yet')
-            return
-    except ValueError:
-        # Extract date string and convert it
-        date_pattern = r'(\d{1,2}\.\d{1,2}\.\d{4})'
-        try:
-            date_string_from_message = re.search(date_pattern, raw_event_date).group(1)
-            event_date = dt.datetime.strptime(date_string_from_message, '%d.%m.%Y').date()
-            if check_date(event_date):
-                await state.update_data({'event_date': event_date})
-            else:
-                await message.answer('This date has not happened yet')
-                return
-        except (AttributeError, Exception):
-            # Failed both times
-            await message.answer('Please send a correct date in format 01.12.2023')
-            return
-
-    # Save collected data to db
-    await save_income_data_to_db(message, state)
+    event_date, error_text = check_input.event_date_from_user_message(raw_event_date)
+    if event_date is not None:
+        await state.update_data({'event_date': event_date})
+        # Save collected data to db
+        await save_income_data_to_db(message, state)
+    else:
+        await message.answer(error_text)
