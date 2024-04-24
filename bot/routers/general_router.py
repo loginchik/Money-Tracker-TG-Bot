@@ -1,12 +1,12 @@
 from aiogram import Router, Bot
 from aiogram.enums import ParseMode
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types.web_app_info import WebAppInfo
 from aiogram.filters import Command, StateFilter, CommandStart
 
 from bot.static.commands import commands
 from bot.middleware.user_language import UserLanguageMiddleware
 from bot.static.messages import GENERAL_ROUTER_MESSAGES
-from bot.webapp.webapp import webapp
 
 
 general_router = Router()
@@ -67,6 +67,7 @@ async def about_message(message: Message, user_lang: str):
 @general_router.message(Command('app'), StateFilter(None))
 async def app_open(message: Message, user_lang: str, bot: Bot):
     button_text = 'Открыть приложение' if user_lang == 'ru' else 'Launch the app'
+    webapp = WebAppInfo(url='https://google.com')
     open_app_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text=button_text, web_app=webapp)]
         ]
