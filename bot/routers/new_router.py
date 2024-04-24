@@ -67,7 +67,7 @@ async def abort_process(message: Message, state: FSMContext, user_lang: str):
     if current_state is not None:
         await state.clear()
         message_text = NEW_ROUTER_MESSAGES['aborted'][user_lang]
-        await message.answer(message_text)
+        return await message.answer(message_text)
 
 
 """
@@ -93,7 +93,7 @@ async def user_registration_init(message: Message, state: FSMContext):
     await state.set_data({'command': message.text})
     # Construct message text
     message_text = ' // '.join(list(NEW_ROUTER_MESSAGES['preferred_language'].values()))
-    await message.answer(message_text, reply_markup=lang_keyboard)
+    return await message.answer(message_text, reply_markup=lang_keyboard)
 
 
 async def get_registration_agreement(message: Message, state: FSMContext, user_lang: str):
@@ -107,7 +107,7 @@ async def get_registration_agreement(message: Message, state: FSMContext, user_l
     reply_inline_keyboard = await generate_registration_keyboard(user_lang)
     await state.set_state(RegistrationStates.decision)
     message_text = NEW_ROUTER_MESSAGES['registration_agreement'][user_lang]
-    await message.answer(message_text, reply_markup=reply_inline_keyboard)
+    return await message.answer(message_text, reply_markup=reply_inline_keyboard)
 
 
 @new_record_router.callback_query(RegistrationStates.preferred_language)
@@ -121,7 +121,7 @@ async def save_language_preference(callback: CallbackQuery, state: FSMContext):
     """
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.update_data(lang=callback.data)
-    await get_registration_agreement(callback.message, state, callback.data)
+    return await get_registration_agreement(callback.message, state, callback.data)
 
 
 @new_record_router.callback_query(RegistrationStates.decision)
@@ -158,19 +158,18 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext,
             await callback.answer(notification_text)
             message_text = NEW_ROUTER_MESSAGES['after_registration'][state_data['lang']]
             message_text = message_text.format(state_data['command'])
-            await callback.message.answer(message_text)
+            return await callback.message.answer(message_text)
         except Exception as e:
             logging.error(e)
             message_text = NEW_ROUTER_MESSAGES['registration_fail'][state_data['lang']]
-            await callback.message.answer(message_text)
-            return
+            return await callback.message.answer(message_text)
         finally:
             await state.clear()
     # User doesn't want to register
     elif decision == 'cancel_register':
         message_text = NEW_ROUTER_MESSAGES['registration_cancel'][user_lang]
-        await callback.message.answer(message_text)
         await state.clear()
+        return await callback.message.answer(message_text)
 
 
 """
@@ -191,7 +190,7 @@ async def add_expense_init(message: Message, state: FSMContext, user_lang: str):
     await state.set_state(NewExpenseStates.get_money_amount)
     await state.update_data(user_id=message.from_user.id)
     message_text = NEW_ROUTER_MESSAGES['expense_money_amount'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
 async def get_expense_category(message: Message, state: FSMContext, user_lang: str):
@@ -205,7 +204,7 @@ async def get_expense_category(message: Message, state: FSMContext, user_lang: s
     categories_keyboard = await generate_categories_keyboard(user_lang)
     await state.set_state(NewExpenseStates.get_category)
     message_text = NEW_ROUTER_MESSAGES['expense_category'][user_lang]
-    await message.answer(message_text, reply_markup=categories_keyboard)
+    return await message.answer(message_text, reply_markup=categories_keyboard)
 
 
 @new_record_router.message(NewExpenseStates.get_money_amount)
@@ -221,9 +220,9 @@ async def save_expense_amount(message: Message, state: FSMContext, user_lang: st
     money_amount, error_text = check_input.money_amount_from_user_message(raw_money_count, user_lang)
     if money_amount is not None:
         await state.update_data(amount=money_amount)
-        await get_expense_category(message, state, user_lang)
+        return await get_expense_category(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def get_expense_subcategory(message: Message, state: FSMContext, user_lang: str):
@@ -239,7 +238,7 @@ async def get_expense_subcategory(message: Message, state: FSMContext, user_lang
     category_id = state_data['category']
     subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang)
     message_text = NEW_ROUTER_MESSAGES['expense_subcategory'][user_lang]
-    await message.answer(message_text, reply_markup=subcategories_keyboard)
+    return await message.answer(message_text, reply_markup=subcategories_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_category)
@@ -255,10 +254,10 @@ async def save_expense_category(callback: CallbackQuery, state: FSMContext, user
         user_expense_category = int(callback.data.split(':')[1])
         await callback.message.edit_reply_markup(reply_markup=None)
         await state.update_data(category=user_expense_category)
-        await get_expense_subcategory(callback.message, state, user_lang)
+        return await get_expense_subcategory(callback.message, state, user_lang)
     else:
         message_text = NEW_ROUTER_MESSAGES['incorrect_category'][user_lang]
-        await callback.answer(message_text)
+        return await callback.answer(message_text)
 
 
 async def get_expense_datetime(message: Message, state: FSMContext, user_lang: str):
@@ -272,7 +271,7 @@ async def get_expense_datetime(message: Message, state: FSMContext, user_lang: s
     now_keyboard = await generate_now_keyboard(user_lang)
     await state.set_state(NewExpenseStates.get_datetime)
     message_text = NEW_ROUTER_MESSAGES['expense_datetime'][user_lang]
-    await message.answer(message_text, reply_markup=now_keyboard)
+    return await message.answer(message_text, reply_markup=now_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_subcategory)
@@ -289,14 +288,14 @@ async def save_expense_subcategory(callback: CallbackQuery, state: FSMContext, u
     await callback.message.edit_reply_markup(reply_markup=None)
     if callback.data == 'back':
         await state.set_state(NewExpenseStates.get_category)
-        await get_expense_category(callback.message, state, user_lang)
+        return await get_expense_category(callback.message, state, user_lang)
     elif callback.data.startswith('subcategory'):
         subcategory_id = int(callback.data.split(':')[1])
         await state.update_data(subcategory=subcategory_id)
-        await get_expense_datetime(callback.message, state, user_lang)
+        return await get_expense_datetime(callback.message, state, user_lang)
     else:
         message_text = NEW_ROUTER_MESSAGES['incorrect_subcategory'][user_lang]
-        await callback.answer(message_text)
+        return await callback.answer(message_text)
 
 
 async def get_expense_location(message: Message, state: FSMContext, user_lang: str):
@@ -310,7 +309,7 @@ async def get_expense_location(message: Message, state: FSMContext, user_lang: s
     await state.set_state(NewExpenseStates.get_location)
     skip_keyboard = await generate_skip_keyboard('no_location', user_lang)
     message_text = NEW_ROUTER_MESSAGES['expense_location'][user_lang]
-    await message.answer(message_text, reply_markup=skip_keyboard)
+    return await message.answer(message_text, reply_markup=skip_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_datetime)
@@ -325,9 +324,9 @@ async def save_expense_datetime_from_button(callback: CallbackQuery, state: FSMC
     await callback.message.edit_reply_markup(reply_markup=None)
     if callback.data == 'now':
         await state.update_data(event_datetime=dt.datetime.now())
-        await get_expense_location(callback.message, state, user_lang)
+        return await get_expense_location(callback.message, state, user_lang)
     else:
-        await get_expense_datetime(callback.message, state, user_lang)
+        return await get_expense_datetime(callback.message, state, user_lang)
 
 
 @new_record_router.message(NewExpenseStates.get_datetime)
@@ -350,9 +349,9 @@ async def save_expense_datetime_from_message(message: Message, state: FSMContext
     event_datetime, error_text = check_input.event_datetime_from_user_message(message.text, user_lang)
     if event_datetime is not None:
         await state.update_data(event_datetime=event_datetime)
-        await get_expense_location(message, state, user_lang)
+        return await get_expense_location(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def save_expense_data(message: Message, state: FSMContext, user_lang: str):
@@ -375,8 +374,8 @@ async def save_expense_data(message: Message, state: FSMContext, user_lang: str)
         message_text = NEW_ROUTER_MESSAGES['expense_saved'][user_lang]
     else:
         message_text = NEW_ROUTER_MESSAGES['expense_save_error'][user_lang]
-    await message.answer(message_text)
     await state.clear()
+    return await message.answer(message_text)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_location)
@@ -390,7 +389,7 @@ async def skip_expense_location(callback: CallbackQuery, state: FSMContext, user
     """
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.update_data(location=None)
-    await save_expense_data(callback.message, state, user_lang)
+    return await save_expense_data(callback.message, state, user_lang)
 
 
 @new_record_router.message(NewExpenseStates.get_location)
@@ -411,9 +410,9 @@ async def save_expense_location(message: Message, state: FSMContext, bot: Bot, u
     if message.location is not None:
         geometry_point = check_input.tg_location_to_geometry(message.location)
         await state.update_data(location=geometry_point)
-        await save_expense_data(message, state, user_lang)
+        return await save_expense_data(message, state, user_lang)
     else:
-        await get_expense_location(message, state, user_lang)
+        return await get_expense_location(message, state, user_lang)
 
 
 """
@@ -434,7 +433,7 @@ async def add_income_init(message: Message, state: FSMContext, user_lang: str):
     await state.set_state(NewIncomeStates.get_money_amount)
     await state.update_data({'user_id': message.from_user.id})
     message_text = NEW_ROUTER_MESSAGES['income_amount'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
 async def get_income_active_status(message: Message, state: FSMContext, user_lang: str):
@@ -452,7 +451,7 @@ async def get_income_active_status(message: Message, state: FSMContext, user_lan
         false_labels=('Пассивный', 'Passive', 'passive')
     )
     message_text = NEW_ROUTER_MESSAGES['active_status'][user_lang]
-    await message.answer(message_text, reply_markup=active_status_inline_keyboard)
+    return await message.answer(message_text, reply_markup=active_status_inline_keyboard)
 
 
 @new_record_router.message(NewIncomeStates.get_money_amount)
@@ -470,9 +469,9 @@ async def save_income_money_amount(message: Message, state: FSMContext, user_lan
     money_amount, error_text = check_input.money_amount_from_user_message(raw_money_amount, user_lang)
     if money_amount is not None:
         await state.update_data({'amount': money_amount})
-        await get_income_active_status(message, state, user_lang)
+        return await get_income_active_status(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def get_income_date(message: Message, state: FSMContext, user_lang: str):
@@ -486,7 +485,7 @@ async def get_income_date(message: Message, state: FSMContext, user_lang: str):
     await state.set_state(NewIncomeStates.get_event_date)
     today_markup = await generate_today_keyboard(user_lang)
     message_text = NEW_ROUTER_MESSAGES['income_date'][user_lang]
-    await message.answer(message_text, reply_markup=today_markup)
+    return await message.answer(message_text, reply_markup=today_markup)
 
 
 @new_record_router.callback_query(NewIncomeStates.get_active_status)
@@ -500,7 +499,7 @@ async def save_income_active_status(callback: CallbackQuery, state: FSMContext, 
     """
     await state.update_data({'passive': callback.data == 'passive'})
     await callback.message.edit_reply_markup(reply_markup=None)
-    await get_income_date(callback.message, state, user_lang)
+    return await get_income_date(callback.message, state, user_lang)
 
 
 async def save_income_data_to_db(message: Message, state: FSMContext, user_lang: str):
@@ -522,8 +521,8 @@ async def save_income_data_to_db(message: Message, state: FSMContext, user_lang:
         message_text = NEW_ROUTER_MESSAGES['income_saved'][user_lang]
     else:
         message_text = NEW_ROUTER_MESSAGES['income_save_error'][user_lang]
-    await message.answer(message_text)
     await state.clear()
+    return await message.answer(message_text)
 
 
 @new_record_router.callback_query(NewIncomeStates.get_event_date)
@@ -539,7 +538,7 @@ async def save_income_date_from_callback(callback: CallbackQuery, state: FSMCont
     if callback.data == 'today':
         await state.update_data({'event_date': dt.date.today()})
     await callback.message.edit_reply_markup(reply_markup=None)
-    await save_income_data_to_db(callback.message, state, user_lang)
+    return await save_income_data_to_db(callback.message, state, user_lang)
 
 
 @new_record_router.message(NewIncomeStates.get_event_date)
@@ -565,9 +564,9 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
     if event_date is not None:
         await state.update_data({'event_date': event_date})
         # Save collected data to db
-        await save_income_data_to_db(message, state, user_lang)
+        return await save_income_data_to_db(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 """
 ============ New expense limit ============
@@ -590,7 +589,7 @@ async def get_expense_limit_title(message: Message, state: FSMContext, user_lang
     if len(exist_titles) > 0:
         exist_titles_string = ', '.join(['<i>' + t + '</i>' for t in exist_titles])
         message_text += NEW_ROUTER_MESSAGES['expense_limit_existent_limits'][user_lang].format(exist_titles_string)
-    await message.answer(message_text, parse_mode=ParseMode.HTML)
+    return await message.answer(message_text, parse_mode=ParseMode.HTML)
 
 
 async def get_expense_limit_category(message: Message, state: FSMContext, user_lang: str):
@@ -604,7 +603,7 @@ async def get_expense_limit_category(message: Message, state: FSMContext, user_l
     await state.set_state(NewExpenseLimitStates.get_category)
     categories_keyboard = await generate_categories_keyboard(user_language_code=user_lang)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_category'][user_lang]
-    await message.answer(message_text, reply_markup=categories_keyboard)
+    return await message.answer(message_text, reply_markup=categories_keyboard)
 
 
 @new_record_router.message(NewExpenseLimitStates.get_title)
@@ -619,10 +618,10 @@ async def save_expense_limit_title(message: Message, state: FSMContext, user_lan
     user_title = message.text.strip()
     if len(user_title) in range(1, 101):
         await state.update_data(title=message.text.strip())
-        await get_expense_limit_category(message, state, user_lang)
+        return await get_expense_limit_category(message, state, user_lang)
     else:
         message_text = NEW_ROUTER_MESSAGES['expense_limit_title_too_long'][user_lang]
-        await message.reply(message_text)
+        return await message.reply(message_text)
 
 
 async def get_expense_limit_subcategory(message: Message, state: FSMContext, user_lang: str):
@@ -638,7 +637,7 @@ async def get_expense_limit_subcategory(message: Message, state: FSMContext, use
     subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang)
     await state.set_state(NewExpenseLimitStates.get_subcategory)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_subcategory'][user_lang]
-    await message.answer(message_text, reply_markup=subcategories_keyboard)
+    return await message.answer(message_text, reply_markup=subcategories_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_category)
@@ -655,9 +654,9 @@ async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext
     if callback.data.startswith('category'):
         category_id = int(callback.data.split(':')[-1])
         await state.update_data(category=category_id)
-        await get_expense_limit_subcategory(callback.message, state, user_lang)
+        return await get_expense_limit_subcategory(callback.message, state, user_lang)
     else:
-        await get_expense_limit_category(callback.message, state, user_lang)
+        return await get_expense_limit_category(callback.message, state, user_lang)
 
 
 async def get_expense_limit_period(message: Message, state: FSMContext, user_lang: str):
@@ -671,7 +670,7 @@ async def get_expense_limit_period(message: Message, state: FSMContext, user_lan
     await state.set_state(NewExpenseLimitStates.get_period)
     period_keyboard = await generate_period_keyboard(user_lang)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_period'][user_lang]
-    await message.answer(message_text, reply_markup=period_keyboard)
+    return await message.answer(message_text, reply_markup=period_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_subcategory)
@@ -688,12 +687,12 @@ async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMCont
     if callback.data.startswith('subcategory'):
         subcategory_id = int(callback.data.split(':')[-1])
         await state.update_data(subcategory=subcategory_id)
-        await get_expense_limit_period(callback.message, state, user_lang)
+        return await get_expense_limit_period(callback.message, state, user_lang)
     # Back to list of categories
     elif callback.data == 'back':
-        await get_expense_limit_category(callback.message, state, user_lang)
+        return await get_expense_limit_category(callback.message, state, user_lang)
     else:
-        await get_expense_limit_subcategory(callback.message, state, user_lang)
+        return await get_expense_limit_subcategory(callback.message, state, user_lang)
 
 
 async def get_expense_limit_current_period_start(message: Message, state: FSMContext, user_lang: str):
@@ -709,7 +708,7 @@ async def get_expense_limit_current_period_start(message: Message, state: FSMCon
     user_period = state_data['period']
     keyboard = await generate_period_start_keyboard(user_period)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_period_start'][user_lang]
-    await message.answer(message_text, reply_markup=keyboard)
+    return await message.answer(message_text, reply_markup=keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_period)
@@ -725,9 +724,9 @@ async def save_expense_limit_period(callback: CallbackQuery, state: FSMContext, 
     if callback.data.startswith('period'):
         period_id = int(callback.data.split(':')[-1])
         await state.update_data(period=period_id)
-        await get_expense_limit_current_period_start(callback.message, state, user_lang)
+        return await get_expense_limit_current_period_start(callback.message, state, user_lang)
     else:
-        await get_expense_limit_period(callback.message, state, user_lang)
+        return await get_expense_limit_period(callback.message, state, user_lang)
 
 
 async def get_expense_limit_value(message: Message, state: FSMContext, user_lang: str):
@@ -740,7 +739,7 @@ async def get_expense_limit_value(message: Message, state: FSMContext, user_lang
     """
     await state.set_state(NewExpenseLimitStates.get_limit_value)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_value'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_current_period_start)
@@ -756,10 +755,10 @@ async def save_expense_limit_period_start_from_button(callback: CallbackQuery, s
     try:
         date_from_callback = dt.datetime.strptime(callback.data, '%d.%m.%Y').date()
         await state.update_data(period_start=date_from_callback)
-        await get_expense_limit_value(callback.message, state, user_lang)
+        return await get_expense_limit_value(callback.message, state, user_lang)
     except (ValueError, Exception) as e:
         logging.error(e)
-        await get_expense_limit_current_period_start(callback.message, state, user_lang)
+        return await get_expense_limit_current_period_start(callback.message, state, user_lang)
 
 
 @new_record_router.message(NewExpenseLimitStates.get_current_period_start)
@@ -780,9 +779,9 @@ async def save_expense_limit_period_start_from_message(message: Message, state: 
     period_start_date, error_text = check_input.event_date_from_user_message(message.text.strip(), user_lang)
     if period_start_date is not None:
         await state.update_data(period_start=period_start_date)
-        await get_expense_limit_value(message, state, user_lang)
+        return await get_expense_limit_value(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def get_expense_limit_end_date(message: Message, state: FSMContext, user_lang: str):
@@ -811,9 +810,9 @@ async def save_expense_limit_value(message: Message, state: FSMContext, user_lan
     amount, error_text = check_input.money_amount_from_user_message(message.text.strip(), user_lang)
     if amount is not None:
         await state.update_data(limit_amount=amount)
-        await get_expense_limit_end_date(message, state, user_lang)
+        return await get_expense_limit_end_date(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def get_expense_limit_cumulative_status(message: Message, state: FSMContext, user_lang: str):
@@ -828,7 +827,7 @@ async def get_expense_limit_cumulative_status(message: Message, state: FSMContex
     keyboard = await generate_bool_keyboard(user_lang, true_labels=('Копить', 'Cumulative', 'true'),
                                             false_labels=('Сбрасывать', 'Reset', 'false'))
     message_text = NEW_ROUTER_MESSAGES['expense_limit_cumulative'][user_lang]
-    await message.answer(message_text, reply_markup=keyboard)
+    return await message.answer(message_text, reply_markup=keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_end_date)
@@ -843,7 +842,7 @@ async def skip_expense_limit_end_date(callback: CallbackQuery, state: FSMContext
     await callback.message.edit_reply_markup(reply_markup=None)
     if callback.data == 'no_end':
         await state.update_data(end_date=None)
-        await get_expense_limit_cumulative_status(callback.message, state, user_lang)
+        return await get_expense_limit_cumulative_status(callback.message, state, user_lang)
 
 
 @new_record_router.message(NewExpenseLimitStates.get_end_date)
@@ -864,9 +863,9 @@ async def save_expense_limit_end_date(message: Message, state: FSMContext, bot: 
     end_date, error_text = check_input.event_date_from_user_message(message.text, past=False, user_lang=user_lang)
     if end_date is not None:
         await state.update_data(end_date=end_date)
-        await get_expense_limit_cumulative_status(message, state, user_lang)
+        return await get_expense_limit_cumulative_status(message, state, user_lang)
     else:
-        await message.answer(error_text)
+        return await message.answer(error_text)
 
 
 async def save_expense_limit_data(message: Message, state: FSMContext, user_lang: str):
@@ -892,8 +891,8 @@ async def save_expense_limit_data(message: Message, state: FSMContext, user_lang
         message_text = NEW_ROUTER_MESSAGES['expense_limit_saved'][user_lang]
     else:
         message_text = NEW_ROUTER_MESSAGES['expense_limit_save_error'][user_lang]
-    await message.answer(message_text)
     await state.clear()
+    return await message.answer(message_text)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_cumulative)
@@ -908,4 +907,4 @@ async def save_expense_limit_cumulative_status(callback: CallbackQuery, state: F
     await callback.message.edit_reply_markup(reply_markup=None)
     cumulative_status = callback.data == 'true'
     await state.update_data(cumulative=cumulative_status)
-    await save_expense_limit_data(callback.message, state, user_lang)
+    return await save_expense_limit_data(callback.message, state, user_lang)

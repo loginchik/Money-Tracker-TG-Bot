@@ -104,7 +104,7 @@ NEW_ROUTER_MESSAGES = {
         'en': '4/5. Send date and time of expense (format: 01.12.2023 23:15)'
     },
     'expense_location': {
-        'ru': '5/5. Если хотите, пришлите локацию места, где совершалась покупка, либо нажмите'
+        'ru': '5/5. Если хотите, пришлите локацию места, где совершалась покупка, либо нажмите '
               'кнопку, чтобы пропустить и продолжить',
         'en': '5/5. If you wish, send location of place where you made a purchase.'
               'Or press button to skip and continue'

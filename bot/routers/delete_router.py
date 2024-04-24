@@ -35,7 +35,7 @@ async def nothing_to_delete_message(message: Message, user_lang: str):
     :return: Message.
     """
     message_text = DELETE_ROUTER_MESSAGES['nothing_to_delete'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
 @delete_router.message(Command(commands=['delete_my_data']), UserExists())
@@ -51,7 +51,7 @@ async def delete_user_data(message: Message, state: FSMContext, user_lang: str):
     decision_keyboard = await generate_bool_keyboard(user_lang)
     await state.set_state(DataDeletionStates.decision)
     message_text = DELETE_ROUTER_MESSAGES['confirmation'][user_lang]
-    await message.answer(message_text, reply_markup=decision_keyboard, parse_mode=ParseMode.HTML)
+    return await message.answer(message_text, reply_markup=decision_keyboard, parse_mode=ParseMode.HTML)
 
 
 @delete_router.callback_query(DataDeletionStates.decision)
@@ -75,15 +75,15 @@ async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_la
         try:
             await db.user_operations.delete_user_data(user_id)
             del USER_LANGUAGE_PREFERENCES[user_id]
+            await state.clear()
             message_text = DELETE_ROUTER_MESSAGES['success'][user_lang]
-            await callback.message.answer(message_text)
+            return await callback.message.answer(message_text)
         # Internal error.
         except Exception as e:
             logging.error(e)
             message_text = DELETE_ROUTER_MESSAGES['error'][user_lang]
-            await callback.message.answer(message_text)
+            return await callback.message.answer(message_text)
     # User canceled the decision.
     else:
         message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
-        await callback.message.answer(message_text)
-    await state.clear()
+        return await callback.message.answer(message_text)

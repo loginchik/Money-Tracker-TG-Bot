@@ -22,7 +22,7 @@ async def start_message(message: Message, user_lang: str):
     :return: Message.
     """
     message_text = GENERAL_ROUTER_MESSAGES['hello'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
 @general_router.message(Command('help'), StateFilter(None))
@@ -48,7 +48,7 @@ async def help_message(message: Message, user_lang: str):
     help_heading = '<b>' + help_heading + '</b>'
     message_text = '\n\n'.join([help_heading, commands_text])
     # Send help info to user
-    await message.answer(message_text, parse_mode=ParseMode.HTML)
+    return await message.answer(message_text, parse_mode=ParseMode.HTML)
 
 
 @general_router.message(Command('about'), StateFilter(None))
@@ -60,6 +60,6 @@ async def about_message(message: Message, user_lang: str):
     :return: Message.
     """
     message_text = GENERAL_ROUTER_MESSAGES['about'][user_lang]
-    await message.answer(message_text)
+    return await message.answer(message_text)
 
 
