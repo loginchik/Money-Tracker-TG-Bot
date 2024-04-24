@@ -7,8 +7,7 @@ Package contains scripts that are used to check user input and extract values fr
 + ``event_datetime_from_user_message`` function tries to convert user message text to datetime instance.
 + ``tg_location_to_geometry`` function converts telegram location instance into shapely point instance.
 """
-
-
+import logging
 import re
 import datetime as dt
 
@@ -39,64 +38,66 @@ def date_is_in_past(date: dt.date | dt.datetime) -> bool:
     :param date: Date or datetime value to compare to now.
     :return: Comparison result.
     """
-    if isinstance(date, dt.date):
+    try:
         return dt.date.today() >= date
-    elif isinstance(date, dt.datetime):
+    except TypeError:
+        pass
+    try:
         return dt.datetime.now() >= date
-    else:
+    except TypeError:
         return False
 
 
-def event_date_from_user_message(user_message_text: str) -> [dt.date | None, None | str]:
+def date_check_result(date: dt.date | dt.datetime, past: bool):
+    date_passed = date_is_in_past(date)
+    if past:
+        return (date, None) if date_passed else (None, 'This date has not happened yet')
+    else:
+        return (date, None) if not date_passed else (None, 'This date has happened already')
+
+
+def event_date_from_user_message(user_message_text: str, past: bool = True) -> [dt.date | None, None | str]:
     """
     Tries to convert message text to date in past or today.
     :param user_message_text: Message text.
+    :param past: Date must be in the past.
     :return: Date or None.
     """
     try:
         # Immediate convert
         event_date = dt.datetime.strptime(user_message_text, '%d.%m.%Y').date()
-        if date_is_in_past(event_date):
-            return event_date, None
-        else:
-            return None, 'This date has not happened yet'
+        return date_check_result(event_date, past)
     except ValueError:
         # Extract date string and convert it
         date_pattern = r'(\d{1,2}\.\d{1,2}\.\d{4})'
         try:
             date_string_from_message = re.search(date_pattern, user_message_text).group(1)
             event_date = dt.datetime.strptime(date_string_from_message, '%d.%m.%Y').date()
-            if date_is_in_past(event_date):
-                return event_date, None
-            else:
-                return None, 'This date has not happened yet'
-        except (AttributeError, Exception):
+            return date_check_result(event_date, past)
+        except (AttributeError, Exception) as e:
+            logging.error(e)
             # Failed both times
             return None, 'Please send a correct date in format 01.12.2023'
 
 
-def event_datetime_from_user_message(user_message_text: str) -> [dt.datetime | None, None | str]:
+def event_datetime_from_user_message(user_message_text: str, past: bool = True) -> [dt.datetime | None, None | str]:
     """
     Tries to convert message text to datetime in past or today.
     :param user_message_text: User message text.
+    :param past: Date must be in the past.
     :return: Datetime or None.
     """
     try:
         event_datetime = dt.datetime.strptime(user_message_text, '%d.%m.%Y %H:%M')
-        if date_is_in_past(event_datetime):
-            return event_datetime, None
-        else:
-            return None, 'This date has not happened yet'
+        return date_check_result(event_datetime, past)
     except (ValueError, Exception):
         try:
             datetime_pattern = r'(\d{1,2}\.\d{1,2}\.\d{4} \d{1,2}\:\d{1,2})'
             event_datetime_string = re.search(datetime_pattern, user_message_text).group(1)
             event_datetime = dt.datetime.strptime(event_datetime_string, '%d.%m.%Y %H:%M')
-            if date_is_in_past(event_datetime):
-                return event_datetime, None
-            else:
-                return None, 'This date has not happened yet'
-        except (AttributeError, Exception):
+            return date_check_result(event_datetime, past)
+        except (AttributeError, Exception) as e:
+            logging.error(e)
             return None, 'Please send a correct date in format 01.12.2023 23:15'
 
 
