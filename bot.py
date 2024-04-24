@@ -40,12 +40,8 @@ async def main() -> None:
     Setups bot and starts polling.
     """
     # Set bot commands for all languages and specially for russian
-    deleted = await bot.delete_my_commands()
-    if deleted:
-        await bot.set_my_commands(commands=en_commands_list())
-        await bot.set_my_commands(commands=ru_commands_list(), language_code='ru')
-    else:
-        print('Did not delete any commands')
+    await bot.set_my_commands(commands=ru_commands_list(), language_code='ru')
+    await bot.set_my_commands(commands=en_commands_list())
     # Clear pending updates
     await bot.delete_webhook(drop_pending_updates=True)
     # Start the bot
