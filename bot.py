@@ -25,6 +25,7 @@ commands_en = [
     BotCommand(command='add_expense', description='Add new expense'),
     BotCommand(command='add_income', description='Add new income'),
     BotCommand(command='abort', description='Abort current process and erase temp data'),
+    BotCommand(command='add_expense_limit', description='Add new expense limit for subcategory'),
     BotCommand(command='delete_my_data', description='Delete all one-related data from database'),
 ]
 # List of commands applied to russian language
@@ -32,6 +33,7 @@ commands_ru = [
     BotCommand(command='add_expense', description='Добавить новый расход'),
     BotCommand(command='add_income', description='Добавить новый доход'),
     BotCommand(command='abort', description='Прервать текущий процесс и удалить временные данные'),
+    BotCommand(command='add_expense_limit', description='Добавить предел расходов по подкатегории'),
     BotCommand(command='delete_my_data', description='Удалить все связанные с пользователем данные из базы данных'),
 ]
 

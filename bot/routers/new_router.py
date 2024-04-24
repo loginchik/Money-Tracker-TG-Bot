@@ -21,11 +21,22 @@ from aiogram.exceptions import TelegramBadRequest
 import db.user_operations
 import db.income_operations
 import db.expense_operations
+import db.expense_limit_operations
+
 from bot.filters.user_exists import UserExists
+
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
 from bot.states.new_expense import NewExpenseStates
+from bot.states.new_expense_limit import NewExpenseLimitStates
+
 from bot.internal import check_input
+from bot.keyboards.categories_keyboard import generate_categories_keyboard
+from bot.keyboards.subcategories_keyboard import generate_subcategories_keyboard
+from bot.keyboards.limit_period_keyboard import generate_period_keyboard
+from bot.keyboards.today_keyboard import generate_today_keyboard, generate_now_keyboard
+from bot.keyboards.skip_keyboard import generate_skip_keyboard
+from bot.keyboards.bool_keyboard import generate_bool_keyboard
 
 # Router to handle new records creation process
 new_record_router = Router()
@@ -64,6 +75,7 @@ async def abort_process(message: Message, state: FSMContext):
 # If user is not registered, one is asked to register first
 @new_record_router.message(Command(commands='add_expense'), ~UserExists(), StateFilter(None))
 @new_record_router.message(Command(commands='add_income'), ~UserExists(), StateFilter(None))
+@new_record_router.message(Command(commands=['add_expense_limit']), ~UserExists(), StateFilter(None))
 async def add_expense(message: Message, state: FSMContext):
     """
     As fas as user is not registered, one gets notified and asked if they want to register.
@@ -155,15 +167,9 @@ async def get_expense_category(message: Message, state: FSMContext):
     :param state: FSM context.
     :return: Message with inline keyboard.
     """
-    categories_keyboard = InlineKeyboardBuilder()
-    categories = await db.expense_operations.get_expense_categories()
-    title_column = 'title_ru' if message.from_user.language_code == 'ru' else 'title_en'
-    for cat in categories:
-        button = InlineKeyboardButton(text=cat[title_column], callback_data=f'category:{cat["id"]}')
-        categories_keyboard.add(button)
-    categories_keyboard.adjust(2)
-    await message.answer('Chose category', reply_markup=categories_keyboard.as_markup())
+    categories_keyboard = await generate_categories_keyboard(message.from_user.language_code)
     await state.set_state(NewExpenseStates.get_category)
+    await message.answer('Chose category', reply_markup=categories_keyboard)
 
 
 @new_record_router.message(NewExpenseStates.get_money_amount)
@@ -193,16 +199,8 @@ async def get_expense_subcategory(message: Message, state: FSMContext):
     await state.set_state(NewExpenseStates.get_subcategory)
     state_data = await state.get_data()
     category_id = state_data['category']
-    subcategories = await db.expense_operations.get_expense_subcategories(category_id)
-    subcategories_keyboard = InlineKeyboardBuilder()
-    title_column = 'title_ru' if message.from_user.language_code == 'ru' else 'title_en'
-    for sub in subcategories:
-        button = InlineKeyboardButton(text=sub[title_column], callback_data=f'subcategory:{sub["id"]}')
-        subcategories_keyboard.add(button)
-    back_button = InlineKeyboardButton(text='Back to categories', callback_data='back')
-    subcategories_keyboard.add(back_button)
-    subcategories_keyboard.adjust(2)
-    await message.answer('Chose subcategory', reply_markup=subcategories_keyboard.as_markup())
+    subcategories_keyboard = await generate_subcategories_keyboard(category_id, message.from_user.language_code)
+    await message.answer('Chose subcategory', reply_markup=subcategories_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_category)
@@ -229,10 +227,9 @@ async def get_expense_datetime(message: Message, state: FSMContext):
     :param state: FSM context.
     :return: Message with 'now' button.
     """
-    now_keyboard = InlineKeyboardBuilder()
-    now_keyboard.add(InlineKeyboardButton(text='Now', callback_data='now'))
+    now_keyboard = await generate_now_keyboard(message.from_user.language_code)
     await state.set_state(NewExpenseStates.get_datetime)
-    await message.answer('Send datetime in format like 01.12.2023 23:15', reply_markup=now_keyboard.as_markup())
+    await message.answer('Send datetime in format like 01.12.2023 23:15', reply_markup=now_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_subcategory)
@@ -265,9 +262,8 @@ async def get_expense_location(message: Message, state: FSMContext):
     :return: Message.
     """
     await state.set_state(NewExpenseStates.get_location)
-    skip_keyboard = InlineKeyboardBuilder()
-    skip_keyboard.add(InlineKeyboardButton(text='Skip', callback_data='no_location'))
-    await message.answer('Send location', reply_markup=skip_keyboard.as_markup())
+    skip_keyboard = await generate_skip_keyboard('no_location', message.from_user.language_code)
+    await message.answer('Send location', reply_markup=skip_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_datetime)
@@ -314,22 +310,18 @@ async def save_expense_data(message: Message, state: FSMContext):
     Saves current state data as expense into DB and closes the process.
     :param message: User message.
     :param state: FSM context.
-    :param user_table: User table name.
     :return: Message.
     """
     total_data = await state.get_data()
-    try:
-        await db.expense_operations.add_expense(
+    status = await db.expense_operations.add_expense(
             user_id=total_data['user_id'],
             amount=total_data['amount'],
             subcategory_id=total_data['subcategory'],
             event_time=total_data['event_datetime'],
             location=total_data['location']
         )
-
-        await message.answer('Saved')
-    except Exception as e:
-        await message.answer('Failed to save data, please try again later.')
+    message_text = 'Saved' if status else 'Failed to save data, please try again later.'
+    await message.answer(message_text)
     await state.clear()
 
 
@@ -428,9 +420,8 @@ async def get_income_date(message: Message, state: FSMContext):
     :return: Message with 'today' button.
     """
     await state.set_state(NewIncomeStates.get_event_date)
-    today_markup = InlineKeyboardBuilder()
-    today_markup.add(InlineKeyboardButton(text='Today', callback_data='today'))
-    await message.answer('Event date like 01.12.2024', reply_markup=today_markup.as_markup())
+    today_markup = await generate_today_keyboard(message.from_user.language_code)
+    await message.answer('Event date like 01.12.2024', reply_markup=today_markup)
 
 
 @new_record_router.callback_query(NewIncomeStates.get_active_status)
@@ -454,16 +445,14 @@ async def save_income_data_to_db(message: Message, state: FSMContext):
     :return: Message.
     """
     total_data = await state.get_data()
-    try:
-        await db.income_operations.add_income(
-            user_id=total_data['user_id'],
-            amount=total_data['amount'],
-            passive=total_data['passive'],
-            event_date=total_data['event_date']
-        )
-        await message.answer('Income data saved successfully.')
-    except Exception as e:
-        await message.answer('Failed to save data, please try again later.')
+    status = await db.income_operations.add_income(
+        user_id=total_data['user_id'],
+        amount=total_data['amount'],
+        passive=total_data['passive'],
+        event_date=total_data['event_date']
+    )
+    message_text = 'Income data saved successfully.' if status else 'Failed to save data, please try again later.'
+    await message.answer(message_text)
     await state.clear()
 
 
@@ -510,3 +499,184 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
 """
 ============ New expense limit ============
 """
+
+
+@new_record_router.message(Command(commands='add_expense_limit'), UserExists(), StateFilter(None))
+async def get_expense_limit_title(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_title)
+    await state.update_data(user_id=message.from_user.id)
+    await message.answer('Title? Length in range 1-100')
+
+
+async def get_expense_limit_category(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_category)
+    categories_keyboard = await generate_categories_keyboard(user_language_code=message.from_user.language_code)
+    await message.answer('Category?', reply_markup=categories_keyboard)
+
+
+@new_record_router.message(NewExpenseLimitStates.get_title)
+async def save_expense_limit_title(message: Message, state: FSMContext):
+    user_title = message.text.strip()
+    if len(user_title) in range(1, 101):
+        await state.update_data(title=message.text.strip())
+        await get_expense_limit_category(message, state)
+    else:
+        await get_expense_limit_title(message, state)
+
+
+async def get_expense_limit_subcategory(message: Message, state: FSMContext):
+    state_data = await state.get_data()
+    category_id = state_data['category']
+    subcategories_keyboard = await generate_subcategories_keyboard(category_id, message.from_user.language_code)
+    await state.set_state(NewExpenseLimitStates.get_subcategory)
+    await message.answer('Subcategory?', reply_markup=subcategories_keyboard)
+
+
+@new_record_router.callback_query(NewExpenseStates.get_category)
+async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext):
+    # Remove markup anyway
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data.startswith('category'):
+        category_id = int(callback.data.split(':')[-1])
+        await state.update_data(category=category_id)
+        await get_expense_limit_subcategory(callback.message, state)
+    else:
+        await get_expense_limit_category(callback.message, state)
+
+
+async def get_expense_limit_period(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_period)
+    period_keyboard = await generate_period_keyboard(message.from_user.language_code)
+    await message.answer('Period?', reply_markup=period_keyboard)
+
+
+@new_record_router.callback_query(NewExpenseLimitStates.get_subcategory)
+async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMContext):
+    # Remove markup anyway
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data.startswith('subcategory'):
+        subcategory_id = int(callback.data.split(':')[-1])
+        await state.update_data(subcategory=subcategory_id)
+        await get_expense_limit_period(callback.message, state)
+    # Back to list of categories
+    elif callback.data == 'back':
+        await get_expense_limit_category(callback.message, state)
+    else:
+        await get_expense_limit_subcategory(callback.message, state)
+
+
+async def get_expense_limit_current_period_start(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_current_period_start)
+    today_keyboard = await generate_today_keyboard(message.from_user.language_code)
+    await message.answer('Period start?', reply_markup=today_keyboard)
+
+
+@new_record_router.callback_query(NewExpenseLimitStates.get_period)
+async def save_expense_limit_period(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data.startswith('period'):
+        period_id = int(callback.data.split(':')[-1])
+        await state.update_data(period=period_id)
+        await get_expense_limit_current_period_start(callback.message, state)
+    else:
+        await get_expense_limit_period(callback.message, state)
+
+
+async def get_expense_limit_value(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_limit_value)
+    await message.answer('Limit value?')
+
+
+@new_record_router.callback_query(NewExpenseLimitStates.get_current_period_start)
+async def save_expense_limit_period_start_from_button(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data == 'today':
+        await state.update_data(period_start=dt.datetime.today())
+        await get_expense_limit_value(callback.message, state)
+    else:
+        await get_expense_limit_current_period_start(callback.message, state)
+
+
+@new_record_router.message(NewExpenseLimitStates.get_current_period_start)
+async def save_expense_limit_period_start_from_message(message: Message, state: FSMContext, bot: Bot):
+    try:
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    period_start_date, error_text = check_input.event_date_from_user_message(message.text.strip())
+    if period_start_date is not None:
+        await state.update_data(period_start=period_start_date)
+        await get_expense_limit_value(message, state)
+    else:
+        await message.answer(error_text)
+
+
+async def get_expense_limit_end_date(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_end_date)
+    skip_keyboard = await generate_skip_keyboard('no_end', message.from_user.language_code)
+    await message.answer('End date?', reply_markup=skip_keyboard)
+
+
+@new_record_router.message(NewExpenseLimitStates.get_limit_value)
+async def save_expense_limit_value(message: Message, state: FSMContext):
+    amount, error_text = check_input.money_amount_from_user_message(message.text.strip())
+    if amount is not None:
+        await state.update_data(limit_amount=amount)
+        await get_expense_limit_end_date(message, state)
+    else:
+        await message.answer(error_text)
+
+
+async def get_expense_limit_cumulative_status(message: Message, state: FSMContext):
+    await state.set_state(NewExpenseLimitStates.get_cumulative)
+    keyboard = await generate_bool_keyboard(message.from_user.language_code)
+    await message.answer('Cumulative status?', reply_markup=keyboard)
+
+
+@new_record_router.callback_query(NewExpenseLimitStates.get_end_date)
+async def skip_expense_limit_end_date(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    if callback.data == 'no_end':
+        await state.update_data(end_date=None)
+        await get_expense_limit_cumulative_status(callback.message, state)
+
+
+@new_record_router.message(NewExpenseLimitStates.get_end_date)
+async def save_expense_limit_end_date(message: Message, state: FSMContext, bot: Bot):
+    try:
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    end_date, error_text = check_input.event_date_from_user_message(message.text, past=False)
+    if end_date is not None:
+        await state.update_data(end_date=end_date)
+        await get_expense_limit_cumulative_status(message, state)
+    else:
+        await message.answer(error_text)
+
+
+async def save_expense_limit_data(message: Message, state: FSMContext):
+    total_data = await state.get_data()
+    status = db.expense_limit_operations.add_expense_limit(
+        user_id=total_data['user_id'],
+        period=total_data['period'],
+        current_period_start=total_data['period_start'],
+        limit_value=total_data['limit_amount'],
+        cumulative=total_data['cumulative'],
+        user_title=total_data['title'],
+        subcategory_id=total_data['subcategory'],
+        end_date=total_data['end_date']
+    )
+    message_text = 'Created' if status else 'Try again later'
+    await message.answer(message_text)
+    await state.clear()
+
+
+@new_record_router.callback_query(NewExpenseLimitStates.get_cumulative)
+async def save_expense_limit_cumulative_status(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    cumulative_status = callback.data == 'yes'
+    await state.update_data(cumulative=cumulative_status)
+    await save_expense_limit_data(callback.message, state)
