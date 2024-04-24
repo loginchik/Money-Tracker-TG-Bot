@@ -2,7 +2,7 @@
 Package contains scripts that create connection to the database. Main function for export and
 external use is ``create_connection``.
 """
-
+import logging
 import os
 
 import asyncpg
@@ -22,12 +22,16 @@ def database_url() -> str:
     return db_url
 
 
-async def create_connection() -> asyncpg.Connection:
+async def create_connection() -> asyncpg.Connection | None:
     """
     Creates database connection.
     :return: Async connection to DB.
     """
 
     db_url = database_url()
-    connection = await asyncpg.connect(dsn=db_url)
-    return connection
+    try:
+        connection = await asyncpg.connect(dsn=db_url)
+        return connection
+    except Exception as e:
+        logging.critical(e)
+        return None
