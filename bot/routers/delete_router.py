@@ -22,6 +22,7 @@ from bot.static.messages import DELETE_ROUTER_MESSAGES
 
 delete_router = Router()
 delete_router.message.middleware(UserLanguageMiddleware())
+delete_router.callback_query.middleware(UserLanguageMiddleware())
 
 
 @delete_router.message(Command(commands=['delete_my_data']), ~UserExists())

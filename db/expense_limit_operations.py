@@ -29,3 +29,8 @@ async def add_expense_limit(user_id: int, period: int, current_period_start: dt.
         return False
     finally:
         await conn.close()
+
+
+async def user_expense_limits(user_id: int):
+    # con = await create_connection()
+    ...
