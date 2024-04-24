@@ -23,6 +23,18 @@ secrets = dotenv_values(secrets_path)
 bot = Bot(token=secrets['BOT_TOKEN'])
 
 
+async def on_startup():
+    await bot.send_message(chat_id=secrets['ADMIN'], text='Bot started')
+
+
+async def on_shutdown():
+    await bot.send_message(chat_id=secrets['ADMIN'], text='Bot stopped')
+
+
+dp.startup.register(on_startup)
+dp.shutdown.register(on_shutdown)
+
+
 async def main() -> None:
     """
     Setups bot and starts polling.
