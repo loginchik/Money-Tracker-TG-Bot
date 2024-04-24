@@ -43,11 +43,11 @@ async def create_user(**user_data: dict) -> bool:
 
     # Create user row in users table
     try:
-        create_user_query = '''INSERT INTO shared.user (tg_id, tg_username, tg_first_name) 
-        VALUES ($1, $2, $3) 
-        ON CONFLICT (tg_id) DO UPDATE SET tg_username = $2, tg_first_name = $3;'''
+        create_user_query = '''INSERT INTO shared.user (tg_id, tg_username, tg_first_name, lang) 
+        VALUES ($1, $2, $3, $4) 
+        ON CONFLICT (tg_id) DO UPDATE SET tg_username = $2, tg_first_name = $3, lang = $4;'''
         await db_connection.execute(create_user_query,user_tg_id, user_data['tg_username'],
-                                    user_data['tg_first_name'])
+                                    user_data['tg_first_name'], user_data['lang'])
         logging.info(f'User {user_tg_id} created')
     except Exception as e:
         logging.critical(e)

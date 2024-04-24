@@ -12,6 +12,7 @@ class RegistrationStates(StatesGroup):
     """
     User registration states.
     """
+    preferred_language = State()
     decision = State()
 
 

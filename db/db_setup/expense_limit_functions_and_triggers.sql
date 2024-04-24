@@ -4,7 +4,10 @@ CREATE OR REPLACE FUNCTION user_based.current_balance_to_limit()
 RETURNS TRIGGER AS
 $$
 BEGIN
-	new.current_balance = new.limit_value;
+	new.current_balance = new.limit_value -
+						(select sum(amount) from user_based.expense
+							where user_id = new.user_id and subcategory = new.subcategory
+								and event_time::timestamp >= new.current_period_start::date);
 	return new;
 END
 $$

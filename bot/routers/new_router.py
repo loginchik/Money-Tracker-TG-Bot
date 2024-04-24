@@ -7,7 +7,7 @@ First section is dedicated to `new expense record`, the main functionality of th
 to `income record creation`. Third section is dedicated to `create expense limit records`. All sections are handled
 by ``new_record_router``.
 """
-
+import asyncio
 import datetime as dt
 import logging
 
@@ -25,6 +25,7 @@ import db.expense_operations
 import db.expense_limit_operations
 
 from bot.filters.user_exists import UserExists
+from bot.middleware.user_language import UserLanguageMiddleware
 
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
@@ -39,15 +40,12 @@ from bot.keyboards.today_keyboard import generate_today_keyboard, generate_now_k
 from bot.keyboards.skip_keyboard import generate_skip_keyboard
 from bot.keyboards.bool_keyboard import generate_bool_keyboard
 from bot.keyboards.period_start_keyboard import generate_period_start_keyboard
+from bot.keyboards.registration_keyboard import generate_registration_keyboard, generate_preferred_lang_keyboard
 
 # Router to handle new records creation process
 new_record_router = Router()
-
-
-register_inline_button_ru = InlineKeyboardButton(text='Создать аккаунт', callback_data='register')
-dont_register_inline_button_ru = InlineKeyboardButton(text='Отмена', callback_data='cancel_register')
-register_inline_button_en = InlineKeyboardButton(text='Create account', callback_data='register')
-dont_register_inline_button_en = InlineKeyboardButton(text='Cancel', callback_data='cancel_register')
+new_record_router.message.middleware(UserLanguageMiddleware())
+new_record_router.callback_query.middleware(UserLanguageMiddleware())
 
 
 """
@@ -75,30 +73,36 @@ async def abort_process(message: Message, state: FSMContext):
 
 
 # If user is not registered, one is asked to register first
-@new_record_router.message(Command(commands='add_expense'), ~UserExists(), StateFilter(None))
-@new_record_router.message(Command(commands='add_income'), ~UserExists(), StateFilter(None))
-@new_record_router.message(Command(commands=['add_expense_limit']), ~UserExists(), StateFilter(None))
-async def add_expense(message: Message, state: FSMContext):
+@new_record_router.message(Command(commands=['add_expense', 'add_income', 'add_expense_limit']),
+                           ~UserExists(), StateFilter(None))
+async def user_registration_init(message: Message, state: FSMContext, user_lang: str):
     """
     As fas as user is not registered, one gets notified and asked if they want to register.
 
     :param message: Message from user, containing command.
     :param state: FSM context to set state.
+    :param user_lang: User preferred language.
     :return: Message with inline keyboard about registration.
     """
 
     # Construct reply markup
-    reply_inline_keyboard = InlineKeyboardBuilder()
-    if message.from_user.language_code == 'ru':
-        reply_inline_keyboard.add(register_inline_button_ru)
-        reply_inline_keyboard.add(dont_register_inline_button_ru)
-    else:
-        reply_inline_keyboard.add(register_inline_button_en)
-        reply_inline_keyboard.add(dont_register_inline_button_en)
-
-    await state.set_state(RegistrationStates.decision)
+    lang_keyboard = await generate_preferred_lang_keyboard()
+    await state.set_state(RegistrationStates.preferred_language)
     await state.set_data({'command': message.text})
-    await message.answer('You are not registered yet', reply_markup=reply_inline_keyboard.as_markup())
+    await message.answer('Lang?', reply_markup=lang_keyboard)
+
+
+async def get_registration_agreement(message: Message, state: FSMContext, user_lang: str):
+    reply_inline_keyboard = await generate_registration_keyboard(user_lang)
+    await state.set_state(RegistrationStates.decision)
+    await message.answer('You are not registered yet', reply_markup=reply_inline_keyboard)
+
+
+@new_record_router.callback_query(RegistrationStates.preferred_language)
+async def save_language_preference(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await state.update_data(lang=callback.data)
+    await get_registration_agreement(callback.message, state, callback.data)
 
 
 @new_record_router.callback_query(RegistrationStates.decision)
@@ -118,15 +122,17 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext)
     await callback.message.edit_reply_markup(reply_markup=None)
     if decision == 'register':
         # Gather user data to insert into DB
+        state_data = await state.get_data()
         user_data = {
             'tg_id': callback.from_user.id,
             'tg_username': callback.from_user.username,
             'tg_first_name': callback.from_user.first_name,
+            'lang': state_data['lang']
         }
         # Create user and notify the user
+        await asyncio.sleep(.5)
         try:
             await db.user_operations.create_user(**user_data)
-            state_data = await state.get_data()
             initial_command = state_data['command']
             await callback.answer(f'You are registered successfully.')
             await callback.message.answer(initial_command)
