@@ -32,7 +32,8 @@ class UserLanguageMiddleware(BaseMiddleware):
                 data['user_lang'] = USER_LANGUAGE_PREFERENCES[user_id]
             else:
                 # Otherwise, set language to telegram language
-                data['user_lang'] = event.from_user.language_code
+                user_tg_language = event.from_user.language_code
+                data['user_lang'] = user_tg_language if user_tg_language in ['en', 'ru'] else 'en'
         # If user is present in local dictionary, it's mush easier
         else:
             data['user_lang'] = USER_LANGUAGE_PREFERENCES[user_id]
