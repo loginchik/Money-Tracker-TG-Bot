@@ -32,7 +32,6 @@ async def main() -> None:
     if deleted:
         await bot.set_my_commands(commands=en_commands_list())
         await bot.set_my_commands(commands=ru_commands_list(), language_code='ru')
-        print(await bot.get_my_commands())
     else:
         print('Did not delete any commands')
     # Clear pending updates
