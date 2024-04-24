@@ -14,27 +14,51 @@ general_router.message.middleware(UserLanguageMiddleware())
 
 @general_router.message(CommandStart(), StateFilter(None))
 async def start_message(message: Message, user_lang: str):
+    """
+    Sends start message to user. Automatically triggered
+    on user first interaction with the bot.
+    :param message: User message.
+    :param user_lang: User language.
+    :return: Message.
+    """
     message_text = GENERAL_ROUTER_MESSAGES['hello'][user_lang]
     await message.answer(message_text)
 
 
 @general_router.message(Command('help'), StateFilter(None))
 async def help_message(message: Message, user_lang: str):
+    """
+    Collects all commands besides abort and help long description in user preferred language
+    and sends it as numerated list.
+    :param message: User message.
+    :param user_lang: User language.
+    :return: Message.
+    """
+    # Define description column based on user language
     descr_column = 'ru_long' if user_lang == 'ru' else 'en_long'
+    # Collect list of commands descriptions
     command_descriptions = [
         f'/{command_text}\n{command_descr[descr_column]}' for command_text, command_descr in commands.items()
         if command_text not in ['abort', 'help']
     ]
+    # Collect commands descriptions into numerated list
     commands_text = '\n\n'.join([f'({i + 1}) {text}' for i, text in enumerate(command_descriptions)])
-
+    # Prepend heading for the message
     help_heading = GENERAL_ROUTER_MESSAGES['help_heading'][user_lang]
     help_heading = '<b>' + help_heading + '</b>'
     message_text = '\n\n'.join([help_heading, commands_text])
+    # Send help info to user
     await message.answer(message_text, parse_mode=ParseMode.HTML)
 
 
 @general_router.message(Command('about'), StateFilter(None))
 async def about_message(message: Message, user_lang: str):
+    """
+    Sends about message to user.
+    :param message: User message.
+    :param user_lang: User language.
+    :return: Message.
+    """
     message_text = GENERAL_ROUTER_MESSAGES['about'][user_lang]
     await message.answer(message_text)
 
