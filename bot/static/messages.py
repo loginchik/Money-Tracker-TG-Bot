@@ -39,6 +39,10 @@ GENERAL_ROUTER_MESSAGES = {
         'ru': 'О боте!',
         'en': 'About!',
     },
+    'launch_app': {
+        'ru': 'Нажмите на кнопку, чтобы открыть мини-приложение',
+        'en': 'Press the button to start the mini-app'
+    }
 }
 
 

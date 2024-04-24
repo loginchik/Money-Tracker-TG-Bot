@@ -1,11 +1,12 @@
-from aiogram import Router
+from aiogram import Router, Bot
 from aiogram.enums import ParseMode
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command, StateFilter, CommandStart
 
 from bot.static.commands import commands
 from bot.middleware.user_language import UserLanguageMiddleware
 from bot.static.messages import GENERAL_ROUTER_MESSAGES
+from bot.webapp.webapp import webapp
 
 
 general_router = Router()
@@ -63,3 +64,13 @@ async def about_message(message: Message, user_lang: str):
     return await message.answer(message_text)
 
 
+@general_router.message(Command('app'), StateFilter(None))
+async def app_open(message: Message, user_lang: str, bot: Bot):
+    button_text = 'Открыть приложение' if user_lang == 'ru' else 'Launch the app'
+    open_app_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=button_text, web_app=webapp)]
+        ]
+    )
+    await bot.send_dice(chat_id=message.chat.id)
+    message_text = GENERAL_ROUTER_MESSAGES['launch_app'][user_lang]
+    await message.answer(message_text, reply_markup=open_app_keyboard)
