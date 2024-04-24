@@ -203,6 +203,13 @@ NEW_ROUTER_MESSAGES = {
         'ru': 'К сожалению, что-то пошло не так. Предел расходов не создан. Пожалуйста, попробуйте ещё раз позже',
         'en': 'Unfortunately, something went wrong. Expense limit is not created. Please, try again later'
     },
+
+    'expense_limit_stats': {
+        'ru': '{} ({} дней до конца периода)\n'
+              '|{}| ({}%, {} осталось)',
+        'en': '{} ({} days until period end)\n'
+              '|{}| ({}%, {} left)'
+    }
 }
 
 

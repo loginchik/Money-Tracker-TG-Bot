@@ -6,6 +6,7 @@ import logging
 import datetime as dt
 
 from db.connection import create_connection
+from bot.static.messages import NEW_ROUTER_MESSAGES
 
 
 async def add_expense_limit(user_id: int, period: int, current_period_start: dt.datetime,
@@ -42,3 +43,34 @@ async def user_expense_limits(user_id: int):
         return []
     finally:
         await con.close()
+
+
+async def subcategory_expense_limit_stats(subcategory_id: int, user_id: int, user_lang: str):
+    con = await create_connection()
+    query = f'''SELECT user_title, current_period_end::date, current_balance, limit_value 
+    from user_based.expense_limit_{user_id} where subcategory = $1;'''
+    try:
+        stats = await con.fetch(query, subcategory_id)
+        stats_texts = []
+        for stat in stats:
+            original_text = NEW_ROUTER_MESSAGES['expense_limit_stats'][user_lang]
+            days_until_finish = (dt.date.today() - stat['current_period_end']).days
+            limit_value = stat['limit_value']
+            current_balance = stat['current_balance']
+            if current_balance < 0:
+                progress = 100
+                progress_bar = '#' * 20
+            else:
+                progress = round((current_balance / limit_value) * 100)
+                progress_short = round(progress / 5)
+                progress_bar = '#' * progress_short + '-' * (20 - progress_short)
+            formatted = original_text.format(stat['user_title'], str(abs(days_until_finish)), progress_bar,
+                                             str(progress), str(current_balance))
+            stats_texts.append(formatted)
+        return '\n\n'.join(stats_texts)
+    except Exception as e:
+        logging.error(e)
+        return None
+    finally:
+        await con.close()
+

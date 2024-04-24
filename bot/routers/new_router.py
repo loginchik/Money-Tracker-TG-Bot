@@ -375,6 +375,11 @@ async def save_expense_data(message: Message, state: FSMContext, user_lang: str)
     else:
         message_text = NEW_ROUTER_MESSAGES['expense_save_error'][user_lang]
     await state.clear()
+    stats_text = await db.expense_limit_operations.subcategory_expense_limit_stats(
+        subcategory_id=total_data['subcategory'], user_id=total_data['user_id'], user_lang=user_lang
+    )
+    if stats_text is not None:
+        message_text = '\n\n'.join([message_text, stats_text])
     return await message.answer(message_text)
 
 
