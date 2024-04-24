@@ -10,6 +10,6 @@ async def generate_today_keyboard(user_language_code: str) -> InlineKeyboardMark
 
 async def generate_now_keyboard(user_language_code: str) -> InlineKeyboardMarkup:
     keyboard = InlineKeyboardBuilder()
-    button = InlineKeyboardButton(text='Только что' if user_language_code == 'ru' else 'Just now', callback_data='today')
+    button = InlineKeyboardButton(text='Только что' if user_language_code == 'ru' else 'Just now', callback_data='now')
     keyboard.add(button)
     return keyboard.as_markup()
