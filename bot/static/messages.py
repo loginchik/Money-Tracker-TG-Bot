@@ -24,3 +24,20 @@ DELETE_ROUTER_MESSAGES = {
         'en': 'Your data is kept in safe. Thank you for staying with us!'
     }
 }
+
+
+GENERAL_ROUTER_MESSAGES = {
+    'hello': {
+        'ru': 'Привет!',
+        'en': 'Hello!',
+    },
+    'help_heading': {
+        'ru': 'Доступные команды',
+        'en': 'Commands available',
+    },
+    'about': {
+        'ru': 'О боте!',
+        'en': 'About!',
+    },
+}
+
