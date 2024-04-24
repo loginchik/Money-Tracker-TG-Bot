@@ -9,6 +9,7 @@ by ``new_record_router``.
 """
 
 import datetime as dt
+import logging
 
 from aiogram import Router, Bot
 from aiogram.types import Message, CallbackQuery
@@ -37,6 +38,7 @@ from bot.keyboards.limit_period_keyboard import generate_period_keyboard
 from bot.keyboards.today_keyboard import generate_today_keyboard, generate_now_keyboard
 from bot.keyboards.skip_keyboard import generate_skip_keyboard
 from bot.keyboards.bool_keyboard import generate_bool_keyboard
+from bot.keyboards.period_start_keyboard import generate_period_start_keyboard
 
 # Router to handle new records creation process
 new_record_router = Router()
@@ -532,7 +534,7 @@ async def get_expense_limit_subcategory(message: Message, state: FSMContext):
     await message.answer('Subcategory?', reply_markup=subcategories_keyboard)
 
 
-@new_record_router.callback_query(NewExpenseStates.get_category)
+@new_record_router.callback_query(NewExpenseLimitStates.get_category)
 async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext):
     # Remove markup anyway
     await callback.message.edit_reply_markup(reply_markup=None)
@@ -567,8 +569,10 @@ async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMCont
 
 async def get_expense_limit_current_period_start(message: Message, state: FSMContext):
     await state.set_state(NewExpenseLimitStates.get_current_period_start)
-    today_keyboard = await generate_today_keyboard(message.from_user.language_code)
-    await message.answer('Period start?', reply_markup=today_keyboard)
+    state_data = await state.get_data()
+    user_period = state_data['period']
+    keyboard = await generate_period_start_keyboard(user_period)
+    await message.answer('Period start?', reply_markup=keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_period)
@@ -590,10 +594,12 @@ async def get_expense_limit_value(message: Message, state: FSMContext):
 @new_record_router.callback_query(NewExpenseLimitStates.get_current_period_start)
 async def save_expense_limit_period_start_from_button(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_reply_markup(reply_markup=None)
-    if callback.data == 'today':
-        await state.update_data(period_start=dt.datetime.today())
+    try:
+        date_from_callback = dt.datetime.strptime(callback.data, '%d.%m.%Y').date()
+        await state.update_data(period_start=date_from_callback)
         await get_expense_limit_value(callback.message, state)
-    else:
+    except (ValueError, Exception) as e:
+        logging.error(e)
         await get_expense_limit_current_period_start(callback.message, state)
 
 
@@ -659,7 +665,7 @@ async def save_expense_limit_end_date(message: Message, state: FSMContext, bot: 
 
 async def save_expense_limit_data(message: Message, state: FSMContext):
     total_data = await state.get_data()
-    status = db.expense_limit_operations.add_expense_limit(
+    status = await db.expense_limit_operations.add_expense_limit(
         user_id=total_data['user_id'],
         period=total_data['period'],
         current_period_start=total_data['period_start'],
