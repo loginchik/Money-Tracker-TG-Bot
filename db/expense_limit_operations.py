@@ -32,5 +32,13 @@ async def add_expense_limit(user_id: int, period: int, current_period_start: dt.
 
 
 async def user_expense_limits(user_id: int):
-    # con = await create_connection()
-    ...
+    con = await create_connection()
+    query = f'''SELECT user_title FROM user_based.expense_limit_{user_id};'''
+    try:
+        titles = await con.fetch(query)
+        return [t['user_title'] for t in titles]
+    except Exception as e:
+        logging.error(e)
+        return []
+    finally:
+        await con.close()

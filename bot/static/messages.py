@@ -142,9 +142,9 @@ NEW_ROUTER_MESSAGES = {
     },
 
     'expense_limit_title': {
-        'ru': f'1/. Пожалуйста, пришлите название нового предела расходов. Оно должно быть уникальным '
+        'ru': f'1/8. Пожалуйста, пришлите название нового предела расходов. Оно должно быть уникальным '
               f'и не длиннее 100 символов. ',
-        'en': f'1/. Please, send expense limit title. It should be unique and no more than 100 characters length. '
+        'en': f'1/8. Please, send expense limit title. It should be unique and no more than 100 characters length. '
     },
     'expense_limit_title_too_long': {
         'ru': 'Это название слишком длинное. Пожалуйста, пришлите корректное',
@@ -155,43 +155,43 @@ NEW_ROUTER_MESSAGES = {
         'en': 'You already have limits named {}'
     },
     'expense_limit_category': {
-        'ru': '2/. Предел расходов связывается с подкатегорией расходов. Выберите категорию, чтобы'
+        'ru': '2/8. Предел расходов связывается с подкатегорией расходов. Выберите категорию, чтобы'
               'получить варианты подкатегорий на следующем шаге',
-        'en': '2/. Expense limit is linked with expense subcategory. '
+        'en': '2/8. Expense limit is linked with expense subcategory. '
               'Choose a category to get subcategory options in the next step'
     },
     'expense_limit_subcategory': {
-        'ru': '3/. Выберите подкатегорию',
-        'en': '3/. Choose subcategory'
+        'ru': '3/8. Выберите подкатегорию',
+        'en': '3/8. Choose subcategory'
     },
     'expense_limit_period': {
-        'ru': '4/. Предел расходов сбрасывается раз в определённый период времени. '
+        'ru': '4/8. Предел расходов сбрасывается раз в определённый период времени. '
               'Как долго должен длиться один период?',
-        'en': '4/. Expense limit is reset after some period of time. How long should one limit last?'
+        'en': '4/8. Expense limit is reset after some period of time. How long should one limit last?'
     },
     'expense_limit_period_start': {
-        'ru': '5/. Когда начать применять предел? Вы можете выбрать с помощью кнопок или прислать дату вручную'
+        'ru': '5/8. Когда начать применять предел? Вы можете выбрать с помощью кнопок или прислать дату вручную'
               '(формат: 01.12.2023).',
-        'en': '5/. When to start applying expense limit? You can choose by buttons or send a date manually '
+        'en': '5/8. When to start applying expense limit? You can choose by buttons or send a date manually '
               '(format: 01.12.2023).'
     },
     'expense_limit_value': {
-        'ru': '6/. Какую максимальную сумму вы бы хотели тратить на подкатегорию в один период? '
+        'ru': '6/8. Какую максимальную сумму вы бы хотели тратить на подкатегорию в один период? '
               '(формат: 123.45 или 123)',
-        'en': '6/. What is the maximum amount of money you would like to spend for the subcategory in one period?'
+        'en': '6/8. What is the maximum amount of money you would like to spend for the subcategory in one period?'
               '(format: 123.45 or 123)'
     },
     'expense_limit_end_date': {
-        'ru': '7/. Если хотите, установите дату окончания действия предела расходов. После этой даты предел расходов '
+        'ru': '7/8. Если хотите, установите дату окончания действия предела расходов. После этой даты предел расходов '
               'будет автоматически удалён (формат: 01.12.2023). Нажмите кнопку, чтобы пропустить и продолжить',
-        'en': '7/. If you wish, set the end date of expense limit. After this date expense limit will be deleted '
+        'en': '7/8. If you wish, set the end date of expense limit. After this date expense limit will be deleted '
               'automatically (format: 01.12.2023). Press button to skip and continue'
     },
     'expense_limit_cumulative': {
-        'ru': '8/. Вы хотите сбрасывать доступный баланс предела, когда период заканчивается, или копить баланс? '
+        'ru': '8/8. Вы хотите сбрасывать доступный баланс предела, когда период заканчивается, или копить баланс? '
               'Если предел накопительный, то когда у вас останется, например, 10 от текущего периода в следующем '
               'периоде баланс будет 10 + максимальная сумма, которую вы установили на шаге 6',
-        'en': '8/. Do you want to reset available balance to limit value when period ends or to accumulate it?' 
+        'en': '8/8. Do you want to reset available balance to limit value when period ends or to accumulate it?' 
               'Cumulative means that if you have for example 10 left from the period, new period\'s balance will be '
               '10 + max amount you set on step 6'
     },

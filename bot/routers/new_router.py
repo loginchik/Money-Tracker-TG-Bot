@@ -13,6 +13,7 @@ import datetime as dt
 import logging
 
 from aiogram import Router, Bot
+from aiogram.enums import ParseMode
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -585,7 +586,11 @@ async def get_expense_limit_title(message: Message, state: FSMContext, user_lang
     await state.set_state(NewExpenseLimitStates.get_title)
     await state.update_data(user_id=message.from_user.id)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_title'][user_lang]
-    await message.answer(message_text)
+    exist_titles = await db.expense_limit_operations.user_expense_limits(message.from_user.id)
+    if len(exist_titles) > 0:
+        exist_titles_string = ', '.join(['<i>' + t + '</i>' for t in exist_titles])
+        message_text += NEW_ROUTER_MESSAGES['expense_limit_existent_limits'][user_lang].format(exist_titles_string)
+    await message.answer(message_text, parse_mode=ParseMode.HTML)
 
 
 async def get_expense_limit_category(message: Message, state: FSMContext, user_lang: str):

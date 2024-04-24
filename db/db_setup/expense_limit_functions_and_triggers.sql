@@ -8,6 +8,9 @@ BEGIN
 						(select sum(amount) from user_based.expense
 							where user_id = new.user_id and subcategory = new.subcategory
 								and event_time::timestamp >= new.current_period_start::date);
+	if new.current_balance is null then
+		new.current_balance = new.limit_value;
+	end if;
 	return new;
 END
 $$
