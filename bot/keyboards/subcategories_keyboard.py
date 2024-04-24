@@ -10,7 +10,8 @@ async def generate_subcategories_keyboard(category_id: int, user_language_code: 
     for sub in subcategories:
         button = InlineKeyboardButton(text=sub[title_column], callback_data=f'subcategory:{sub["id"]}')
         subcategories_keyboard.add(button)
-    back_button = InlineKeyboardButton(text='Back to categories', callback_data='back')
+    back_button = InlineKeyboardButton(text='Вернуться к категориям' if user_language_code == 'ru' else 'Back to categories',
+                                       callback_data='back')
     subcategories_keyboard.add(back_button)
     subcategories_keyboard.adjust(2)
     return subcategories_keyboard.as_markup()
