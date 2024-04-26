@@ -6,6 +6,7 @@ import logging
 import datetime as dt
 
 import asyncpg
+import pandas as pd
 
 from bot.static.messages import NEW_ROUTER_MESSAGES
 
@@ -39,6 +40,34 @@ async def user_expense_limits(user_id: int, db_connection: asyncpg.Connection):
     except Exception as e:
         logging.error(e)
         return []
+
+
+async def user_expense_limits_info(user_id: int, db_connection: asyncpg.Connection,
+                                   user_lang: str) -> pd.DataFrame | None:
+    title_column = 'title_ru' if user_lang == 'ru' else 'title_en'
+    query = f'''SELECT el.user_title, ec.{title_column} as category, es.{title_column} as subcategory, 
+    el.current_period_start::date, el.current_period_end::date, 
+    el.current_balance, el.limit_value, el.end_date::date, el.cumulative
+    from user_based.expense_limit_{user_id} el
+    join shared.expense_subcategory es on es.id = el.subcategory
+    join shared.expense_category ec on es.category = ec.id;'''
+    try:
+        stats = await db_connection.fetch(query)
+        df = pd.DataFrame({
+            'title': [record['user_title'] for record in stats],
+            'category': [record['category'] for record in stats],
+            'subcategory': [record['subcategory'] for record in stats],
+            'period_start': [record['current_period_start'] for record in stats],
+            'period_end': [record['current_period_end'] for record in stats],
+            'total_end': [record['end_date'] for record in stats],
+            'balance': [record['current_balance'] for record in stats],
+            'limit': [record['limit_value'] for record in stats],
+            'cumulative': [record['cumulative'] for record in stats],
+        })
+        return df
+    except Exception as e:
+        logging.error(e)
+        return None
 
 
 async def subcategory_expense_limit_stats(subcategory_id: int, user_id: int, user_lang: str,

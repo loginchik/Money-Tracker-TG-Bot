@@ -1,8 +1,9 @@
 import logging
 
 import asyncpg
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
+from aiogram.types.input_file import BufferedInputFile, InputFile
 from aiogram.filters import Command, StateFilter
 
 from bot.middleware.user_language import UserLanguageMiddleware
@@ -11,6 +12,7 @@ from bot.filters.user_exists import UserExists
 from bot.static.messages import STATS_ROUTER_MESSAGES
 from bot.keyboards.stats_keyboard import generate_stats_keyboard
 from bot.internal.stats import get_account_stats
+from bot.internal.stats.expense_limits_stats import expense_limits_stats
 
 stats_router = Router()
 stats_router.message.middleware(UserLanguageMiddleware())
@@ -38,11 +40,22 @@ async def stats_choice(message: Message, user_lang: str):
 
 
 @stats_router.callback_query(F.data.startswith('stats_'), UserExists(), StateFilter(None))
-async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Connection):
+async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Connection, bot: Bot):
     if callback.data == 'stats_account':
         try:
             report_message = await get_account_stats(callback.from_user.id, user_lang, db_con)
             return await callback.message.answer(report_message)
+        except Exception as e:
+            logging.error(e)
+            message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
+            return await callback.message.answer(message_text)
+    elif callback.data == 'stats_expense_limits':
+        try:
+            report_text, report_img = await expense_limits_stats(callback.from_user.id, db_con, user_lang)
+            media = BufferedInputFile(file=report_img, filename='expense_limits.png')
+            await bot.send_photo(chat_id=callback.message.chat.id, photo=media)
+            return await callback.message.answer(report_text)
+
         except Exception as e:
             logging.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
