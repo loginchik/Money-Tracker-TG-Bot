@@ -82,8 +82,10 @@ async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_la
         except Exception as e:
             logging.error(e)
             message_text = DELETE_ROUTER_MESSAGES['error'][user_lang]
+            await state.clear()
             return await callback.message.answer(message_text)
     # User canceled the decision.
     else:
         message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
+        await state.clear()
         return await callback.message.answer(message_text)
