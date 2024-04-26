@@ -406,7 +406,8 @@ async def save_expense_data(message: Message, state: FSMContext, user_lang: str,
         message_text = NEW_ROUTER_MESSAGES['expense_save_error'][user_lang]
     await state.clear()
     stats_text = await db.expense_limit_operations.subcategory_expense_limit_stats(
-        subcategory_id=total_data['subcategory'], user_id=total_data['user_id'], user_lang=user_lang
+        subcategory_id=total_data['subcategory'], user_id=total_data['user_id'],
+        user_lang=user_lang, db_connection=db_con,
     )
     if stats_text is not None:
         message_text = '\n\n'.join([message_text, stats_text])
@@ -620,18 +621,19 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
 
 
 @new_record_router.message(Command(commands='add_expense_limit'), UserExists(), StateFilter(None))
-async def get_expense_limit_title(message: Message, state: FSMContext, user_lang: str):
+async def get_expense_limit_title(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Sets NewExpenseLimitStates.get_title and asks for new limit title.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: DB connection.
     :return: Message.
     """
     await state.set_state(NewExpenseLimitStates.get_title)
     await state.update_data(user_id=message.from_user.id)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_title'][user_lang]
-    exist_titles = await db.expense_limit_operations.user_expense_limits(message.from_user.id)
+    exist_titles = await db.expense_limit_operations.user_expense_limits(message.from_user.id, db_con)
     if len(exist_titles) > 0:
         exist_titles_string = ', '.join(['<i>' + t + '</i>' for t in exist_titles])
         message_text += NEW_ROUTER_MESSAGES['expense_limit_existent_limits'][user_lang].format(exist_titles_string)
@@ -922,12 +924,13 @@ async def save_expense_limit_end_date(message: Message, state: FSMContext, bot: 
         return await message.answer(error_text)
 
 
-async def save_expense_limit_data(message: Message, state: FSMContext, user_lang: str):
+async def save_expense_limit_data(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves user expense limit to database.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return:
     """
     total_data = await state.get_data()
@@ -939,7 +942,8 @@ async def save_expense_limit_data(message: Message, state: FSMContext, user_lang
         cumulative=total_data['cumulative'],
         user_title=total_data['title'],
         subcategory_id=total_data['subcategory'],
-        end_date=total_data['end_date']
+        end_date=total_data['end_date'],
+        db_connection=db_con
     )
     if status:
         message_text = NEW_ROUTER_MESSAGES['expense_limit_saved'][user_lang]
@@ -950,15 +954,17 @@ async def save_expense_limit_data(message: Message, state: FSMContext, user_lang
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_cumulative)
-async def save_expense_limit_cumulative_status(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_expense_limit_cumulative_status(callback: CallbackQuery, state: FSMContext, user_lang: str,
+                                               db_con: asyncpg.Connection):
     """
     Saves user cumulative choice and redirects to save_expense_limit_data.
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     await callback.message.edit_reply_markup(reply_markup=None)
     cumulative_status = callback.data == 'true'
     await state.update_data(cumulative=cumulative_status)
-    return await save_expense_limit_data(callback.message, state, user_lang)
+    return await save_expense_limit_data(callback.message, state, user_lang, db_con)

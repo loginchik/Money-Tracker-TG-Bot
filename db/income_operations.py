@@ -8,8 +8,6 @@ import logging
 import asyncpg
 import pandas as pd
 
-from db.connection import create_connection
-
 
 async def add_income(user_id: int, amount: float | int, passive: bool, event_date: dt.date,
                      db_connection: asyncpg.Connection):
