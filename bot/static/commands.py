@@ -50,6 +50,15 @@ commands = {
         'en_long': '',
         'ru_long': '',
     },
+    'export_my_data': {
+        'en': 'Export all one-related expenses and incomes into files and send them via bot',
+        'ru': 'Экспортировать все связанные с пользователем расходы и доходы в файлы и отправить их ботом',
+        'en_long': 'Export all one-related expenses and incomes into files and send them via bot. If '
+                   'files appear to be bigger than Telegram size limit, only the most recent records will be exported',
+        'ru_long': 'Экспортировать все связанные с пользователем расходы и доходы в файлы и отправить их ботом. '
+                   'Если файлы оказываются больше, чем позволяют лимиты Телеграма, экспортируются только наиболее'
+                   'недавние записи',
+    },
     'delete_my_data': {
         'en': 'Delete all one-related data from database',
         'ru': 'Удалить все связанные с пользователем данные из базы данных',
