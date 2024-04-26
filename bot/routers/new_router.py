@@ -541,12 +541,13 @@ async def save_income_active_status(callback: CallbackQuery, state: FSMContext, 
     return await get_income_date(callback.message, state, user_lang)
 
 
-async def save_income_data_to_db(message: Message, state: FSMContext, user_lang: str):
+async def save_income_data_to_db(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves income data to DB and finished the creation process.
     :param message: Message from user.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: DB connection.
     :return: Message.
     """
     total_data = await state.get_data()
@@ -554,7 +555,8 @@ async def save_income_data_to_db(message: Message, state: FSMContext, user_lang:
         user_id=total_data['user_id'],
         amount=total_data['amount'],
         passive=total_data['passive'],
-        event_date=total_data['event_date']
+        event_date=total_data['event_date'],
+        db_connection=db_con,
     )
     if status:
         message_text = NEW_ROUTER_MESSAGES['income_saved'][user_lang]
@@ -565,23 +567,26 @@ async def save_income_data_to_db(message: Message, state: FSMContext, user_lang:
 
 
 @new_record_router.callback_query(NewIncomeStates.get_event_date)
-async def save_income_date_from_callback(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_income_date_from_callback(callback: CallbackQuery, state: FSMContext, user_lang: str,
+                                         db_con: asyncpg.Connection):
     """
     Saves today's date as event date into income data dict and redirects to get_income_date.
     Keyboard is hidden after push.
     :param callback: User push button event.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: DB connection.
     :return: Message.
     """
     if callback.data == 'today':
         await state.update_data({'event_date': dt.date.today()})
     await callback.message.edit_reply_markup(reply_markup=None)
-    return await save_income_data_to_db(callback.message, state, user_lang)
+    return await save_income_data_to_db(callback.message, state, user_lang, db_con)
 
 
 @new_record_router.message(NewIncomeStates.get_event_date)
-async def save_income_date_from_message(message: Message, state: FSMContext, bot: Bot, user_lang: str):
+async def save_income_date_from_message(message: Message, state: FSMContext, bot: Bot, user_lang: str,
+                                        db_con: asyncpg.Connection):
     """
     Tries to extract date string from user message. If successful, redirects to save_income_data_to_db.
     Otherwise, asks for correct date.
@@ -590,11 +595,13 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
     :param state: FSM context.
     :param bot: Bot instance.
     :param user_lang: User language.
+    :param db_con: DB connection.
     :return: Message.
     """
     # Remove 'today' button anyway
     try:
-        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1,
+                                            reply_markup=None)
     except TelegramBadRequest:
         pass
 
@@ -603,7 +610,7 @@ async def save_income_date_from_message(message: Message, state: FSMContext, bot
     if event_date is not None:
         await state.update_data({'event_date': event_date})
         # Save collected data to db
-        return await save_income_data_to_db(message, state, user_lang)
+        return await save_income_data_to_db(message, state, user_lang, db_con)
     else:
         return await message.answer(error_text)
 
