@@ -4,6 +4,7 @@ Package contains scripts that are dedicated to expense operations.
 
 import logging
 import datetime as dt
+import time
 
 import asyncpg
 import asyncpg.pgproto.types
@@ -11,7 +12,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry.point import Point
 
-from db.connection import create_connection, create_sync_connection
+from db.connection import create_connection
 
 
 async def get_expense_categories() -> list[asyncpg.Record]:
@@ -65,25 +66,14 @@ async def add_expense(user_id: int, amount: float, subcategory_id: int, event_ti
 
 
 def raw_data_to_gpd(raw_data) -> gpd.GeoDataFrame:
-    times = []
-    categories = []
-    subcategories = []
-    amounts = []
-    locations = []
-    for record in raw_data:
-        times.append(record['event_time'])
-        categories.append(record['expense_category'])
-        subcategories.append(record['expense_subcategory'])
-        amounts.append(record['amount'])
-        locations.append(record['location'])
 
     df = pd.DataFrame(
         {
-            'event_time': times,
-            'expense_category': categories,
-            'expense_subcategory': subcategories,
-            'amount': amounts,
-            'location': locations
+            'event_time': [record['event_time'] for record in raw_data],
+            'expense_category': [record['expense_category'] for record in raw_data],
+            'expense_subcategory': [record['expense_subcategory'] for record in raw_data],
+            'amount': [record['amount'] for record in raw_data],
+            'location': [record['location'] for record in raw_data]
          }
     )
     df['even_time'] = df['event_time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S'))
@@ -93,8 +83,7 @@ def raw_data_to_gpd(raw_data) -> gpd.GeoDataFrame:
     return gdf
 
 
-async def get_user_expenses(user_id: int, user_lang: str) -> gpd.GeoDataFrame | None:
-    conn = await create_connection()
+async def get_user_expenses(user_id: int, user_lang: str, db_connection: asyncpg.Connection) -> gpd.GeoDataFrame | None:
     title_column = 'title_ru' if user_lang == 'ru' else 'title_en'
     try:
         query = f'''select 
@@ -108,7 +97,7 @@ async def get_user_expenses(user_id: int, user_lang: str) -> gpd.GeoDataFrame | 
         join shared.expense_category ec on es.category = ec.id
         where e.user_id = $1;
         '''
-        raw_data = await conn.fetch(query, user_id)
+        raw_data = await db_connection.fetch(query, user_id)
         data = raw_data_to_gpd(raw_data)
         size_limit = 2000000000
         limit_date = (dt.date(dt.date.today().year, 1, 1))
@@ -119,12 +108,10 @@ async def get_user_expenses(user_id: int, user_lang: str) -> gpd.GeoDataFrame | 
                     join shared.expense_category ec on es.category = ec.id
                     where e.user_id = $1 and e.event_time >= $2;
                     '''
-            raw_data = await conn.fetch(query, user_id, limit_date)
+            raw_data = await db_connection.fetch(query, user_id, limit_date)
             data = raw_data_to_gpd(raw_data)
             limit_date = limit_date + dt.timedelta(days=1)
         return data
     except Exception as e:
         logging.error(e)
         return None
-    finally:
-        await conn.close()

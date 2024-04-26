@@ -5,6 +5,7 @@ Package contains scripts that are dedicated to income operations.
 import datetime as dt
 import logging
 
+import asyncpg
 import pandas as pd
 
 from db.connection import create_connection
@@ -24,22 +25,25 @@ async def add_income(user_id: int, amount: float | int, passive: bool, event_dat
 
 
 def raw_data_to_df(raw_data) -> pd.DataFrame:
-    dates = []
-    types = []
-    amounts = []
-    for record in raw_data:
-        dates.append(record['event_date'])
-        types.append(record['income_type'])
-        amounts.append(record['amount'])
+    """
+    As fas as pandas and geopandas do not support async connection to database, the convertion of db records
+    from raw list to dataframe is done in this function.
 
-    df = pd.DataFrame({'event_date': dates, 'income_type': types, 'amount': amounts})
+    :param raw_data: List of raw records.
+    :return: Pandas dataframe.
+    """
+    df = pd.DataFrame(
+        {'event_date': [record['event_date'] for record in raw_data],
+         'income_type': [record['income_type'] for record in raw_data],
+         'amount': [record['amount'] for record in raw_data]
+         }
+    )
     df['event_date'] = df['event_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
     df['amount'] = df['amount'].astype(float)
     return df
 
 
-async def get_user_income(user_id: int):
-    connection = await create_connection()
+async def get_user_income(user_id: int, db_connection: asyncpg.Connection):
     try:
         query = f'''select i.event_date, cast(
             case when i.passive = 'true' then 'passive'
@@ -50,11 +54,9 @@ async def get_user_income(user_id: int):
         
         where i.user_id = {user_id};
         '''
-        raw_data = await connection.fetch(query)
+        raw_data = await db_connection.fetch(query)
         data = raw_data_to_df(raw_data)
         return data
     except Exception as e:
         logging.error(e)
         return None
-    finally:
-        await connection.close()
