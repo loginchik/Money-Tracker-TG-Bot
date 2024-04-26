@@ -32,6 +32,18 @@ commands = {
                    "автоматически. Команда /abort прервёт процесс и удалит все временные данные (созданные ранее "
                    "пределы расходов не пострадают).",
     },
+    'delete_expense_limit': {
+        'en': 'Delete active expense limit.',
+        'ru': 'Удалить предел расходов',
+        'en_long': 'Delete active expense limit before it runs out of date',
+        'ru_long': 'Удалить предел расходов до того, как он выйдет из срока годности',
+    },
+    'stats': {
+        'en': 'Get statistics',
+        'ru': 'Получить статистику',
+        'en_long': 'Get statistics for account, expense limits, expenses from last 30 days.',
+        'ru_long': 'Получить статистику о пользователе, пределах расходов, расходах за последние 30 дней'
+    },
     'help': {
         'en': 'Get help on bot functions and commands',
         'ru': 'Справка о функциях и командах бота',
