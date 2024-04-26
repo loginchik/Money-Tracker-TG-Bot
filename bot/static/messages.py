@@ -307,3 +307,24 @@ EXPORT_ROUTER_MESSAGES = {
        'en': 'Error exporting incomes...'
     }
 }
+
+
+STATS_ROUTER_MESSAGES = {
+    'no_stats': {
+        'ru': 'Вы не зарегистрированы, поэтому нет статистики, которую можно было бы показать',
+        'en': 'You are not registered. There is no statistics to show'
+    },
+    'choice': {
+        'ru': 'Выберите, какую статистику вы хотите',
+        'en': 'Choose the statistics to get'
+    },
+    'account_stats': {
+        'ru': 'Вы пользуетесь ботом уже {} дней (с {}). '
+              'За это время вы зафиксировали {} расходов на общую '
+              'сумму в {} и {} доходов на общую сумму {}. Так держать!',
+        'en': 'You are using bot for {} days already (since {}). ' 
+              'During this time, you\'ve recorded {} expenses '
+              'for a total of {} and {} incomes for a total of {}.'
+              'Keep it up!'
+    }
+}
