@@ -110,3 +110,28 @@ async def get_user_expenses(user_id: int, user_lang: str, db_connection: asyncpg
     except Exception as e:
         logging.error(e)
         return None
+
+
+async def get_user_expenses_in_daterange(user_id: int, user_lang: str, db_connection: asyncpg.Connection,
+                                         start_date: dt.date, end_date: dt.date) -> gpd.GeoDataFrame | None:
+    if end_date == dt.date.today():
+        end_date = dt.datetime.now()
+    title_column = 'title_ru' if user_lang == 'ru' else 'title_en'
+    try:
+        query = f'''select 
+                e.event_time, 
+                ec.{title_column} as expense_category, 
+                es.{title_column} as expense_subcategory, 
+                e.amount, 
+                e."location"::point 
+            from user_based.expense_{user_id} e 
+            join shared.expense_subcategory es on es.id = e.subcategory
+            join shared.expense_category ec on es.category = ec.id
+            where e.user_id = $1 and e.event_time >= $2 and e.event_time <= $3;
+            '''
+        raw_data = await db_connection.fetch(query, user_id, start_date, end_date)
+        data = raw_data_to_gpd(raw_data)
+        return data
+    except Exception as e:
+        logging.error(e)
+        return None

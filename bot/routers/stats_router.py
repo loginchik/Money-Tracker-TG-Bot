@@ -13,6 +13,7 @@ from bot.static.messages import STATS_ROUTER_MESSAGES
 from bot.keyboards.stats_keyboard import generate_stats_keyboard
 from bot.internal.stats import get_account_stats
 from bot.internal.stats.expense_limits_stats import expense_limits_stats
+from bot.internal.stats.last_m_expense import get_last_month_expenses
 
 stats_router = Router()
 stats_router.message.middleware(UserLanguageMiddleware())
@@ -59,6 +60,24 @@ async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Co
             media = BufferedInputFile(file=report_img, filename='expense_limits.png')
             await bot.send_photo(chat_id=callback.message.chat.id, photo=media)
             return await callback.message.answer(report_text)
+        except Exception as e:
+            logging.error(e)
+            message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
+            return await callback.message.answer(message_text)
+    elif callback.data == 'stats_last_month_expense':
+        try:
+            report_data = await get_last_month_expenses(callback.from_user.id, user_lang, db_con)
+            if report_data is None:
+                return callback.message.answer(STATS_ROUTER_MESSAGES['empty_stats'][user_lang])
+
+            categories_bar, subcategories_bar, day_stats = report_data
+            categories_bar = BufferedInputFile(file=categories_bar, filename='categories_lm.png')
+            subcategories_bar = BufferedInputFile(file=subcategories_bar, filename='subcategories.png')
+            day_stats = BufferedInputFile(file=day_stats, filename='daily_stat.png')
+            await bot.send_photo(chat_id=callback.message.chat.id, photo=categories_bar)
+            await bot.send_photo(chat_id=callback.message.chat.id, photo=subcategories_bar)
+            await bot.send_photo(chat_id=callback.message.chat.id, photo=day_stats)
+
         except Exception as e:
             logging.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]

@@ -16,14 +16,10 @@ async def generate_stats_keyboard(user_lang: str) -> InlineKeyboardMarkup:
         text='Расходы за последний месяц' if user_lang == 'ru' else 'This month expenses',
         callback_data='stats_last_month_expense'
     )
-    last_month_income = InlineKeyboardButton(
-        text='Доходы за последний месяц' if user_lang == 'ru' else 'This month incomes',
-        callback_data='stats_last_month_income'
-    )
 
     keyboard = InlineKeyboardBuilder()
     keyboard.add(
-        user_stats, expense_limits_stats, last_month_expense, last_month_income,
+        user_stats, expense_limits_stats, last_month_expense,
     )
     keyboard.adjust(1)
     return keyboard.as_markup()
