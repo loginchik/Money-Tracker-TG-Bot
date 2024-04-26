@@ -18,7 +18,8 @@ from bot.static.commands import en_commands_list, ru_commands_list
 # Start logging
 logging.basicConfig(level=logging.INFO)
 # Read environment variables to run the bot
-secrets_path = os.path.abspath('.env')
+base_dir = os.path.split(os.path.abspath(__file__))[0]
+secrets_path = os.path.join(base_dir, ".env")
 secrets = dotenv_values(secrets_path)
 # Create bot instance
 props = DefaultBotProperties(parse_mode=ParseMode.HTML)
