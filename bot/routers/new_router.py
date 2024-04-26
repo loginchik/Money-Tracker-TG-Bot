@@ -31,6 +31,7 @@ from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
 from bot.states.new_expense import NewExpenseStates
 from bot.states.new_expense_limit import NewExpenseLimitStates
+from bot.states.export_data import ExportStates
 
 from bot.internal import check_input
 from bot.keyboards.categories_keyboard import generate_categories_keyboard
@@ -54,7 +55,7 @@ new_record_router.callback_query.middleware(UserLanguageMiddleware())
 """
 
 
-@new_record_router.message(Command(commands=['abort']), ~StateFilter(None))
+@new_record_router.message(Command(commands=['abort']), ~StateFilter(None), ~StateFilter(ExportStates))
 async def abort_process(message: Message, state: FSMContext, user_lang: str):
     """
     If any state is set, aborts the process and clears the state.
@@ -68,6 +69,18 @@ async def abort_process(message: Message, state: FSMContext, user_lang: str):
         await state.clear()
         message_text = NEW_ROUTER_MESSAGES['aborted'][user_lang]
         return await message.answer(message_text)
+
+
+@new_record_router.message(Command(commands=['abort']), StateFilter(None))
+async def no_abort(message: Message, state: FSMContext, user_lang: str):
+    message_text = NEW_ROUTER_MESSAGES['nothing_to_abort'][user_lang]
+    await message.answer(message_text)
+
+
+@new_record_router.message(Command(commands=['abort']), StateFilter(ExportStates))
+async def impossible_to_abort(message: Message, state: FSMContext, user_lang: str):
+    message_text = NEW_ROUTER_MESSAGES['impossible_to_abort'][user_lang]
+    await message.answer(message_text)
 
 
 """

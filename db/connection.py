@@ -6,6 +6,7 @@ import logging
 import os
 
 import asyncpg
+import psycopg2
 from dotenv import dotenv_values
 
 
@@ -24,13 +25,27 @@ def database_url() -> str:
 
 async def create_connection() -> asyncpg.Connection | None:
     """
-    Creates database connection.
+    Creates database async connection.
     :return: Async connection to DB.
     """
 
     db_url = database_url()
     try:
         connection = await asyncpg.connect(dsn=db_url)
+        return connection
+    except Exception as e:
+        logging.critical(e)
+        return None
+
+
+def create_sync_connection():
+    """
+    Creates database sync connection.
+    :return: Sync connection to DB via psycopg2.
+    """
+    db_url = database_url()
+    try:
+        connection = psycopg2.connect(dsm=db_url)
         return connection
     except Exception as e:
         logging.critical(e)

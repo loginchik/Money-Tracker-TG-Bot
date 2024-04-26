@@ -7,7 +7,8 @@ import os.path
 import logging
 
 from aiogram import Bot
-from aiogram.types import BotCommand
+from aiogram.client.bot import DefaultBotProperties
+from aiogram.enums import ParseMode
 from dotenv import dotenv_values
 
 from bot.routers.main_router import dp
@@ -20,7 +21,8 @@ logging.basicConfig(level=logging.INFO)
 secrets_path = os.path.abspath('.env')
 secrets = dotenv_values(secrets_path)
 # Create bot instance
-bot = Bot(token=secrets['BOT_TOKEN'])
+props = DefaultBotProperties(parse_mode=ParseMode.HTML)
+bot = Bot(token=secrets['BOT_TOKEN'], default=props)
 
 
 async def on_startup():

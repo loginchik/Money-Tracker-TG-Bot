@@ -51,6 +51,15 @@ NEW_ROUTER_MESSAGES = {
         'ru': 'Процесс прекращён, временные данные удалены',
         'en': 'Process is aborted, temp data is deleted'
     },
+    'nothing_to_abort': {
+        'ru': 'Нет процессов для прерывания',
+        'en': 'There is nothing to abort'
+    },
+    'impossible_to_abort': {
+        'ru': 'Невозможно прервать этот процесс',
+        'en': 'Impossible to abort the process'
+    },
+
     'preferred_language': {
         'ru': 'Выберите предпочтительный язык',
         'en': 'Choose preferred language',
@@ -241,5 +250,60 @@ CHECKS_MESSAGES = {
     'incorrect_datetime_format': {
         'ru': 'Пожалуйста, пришлите дату и время в правильном формате (например, 01.12.2023 23:59)',
         'en': 'Please send correctly formatted date and time (ex. 01.12.2023 23:15)'
+    }
+}
+
+EXPORT_ROUTER_MESSAGES = {
+    'not_registered': {
+        'ru': 'Вы не зарегистрированы. Нет данных, связанных с вами',
+        'en': 'You are not registered. There is no data associated with you'
+    },
+    'wait': {
+        'ru': 'Это займёт некоторое время, пожалуйста, подождите',
+        'en': 'This may take a while, please wait'
+    },
+    'expense_wait': {
+        'ru': 'Собираю ваши расходы... Пожалуйста, подождите',
+        'en': 'Gathering your expenses... Please wait...'
+    },
+    'income_wait': {
+        'ru': 'Собираю ваши расходы... Пожалуйста, подождите',
+        'en': 'Gathering your incomes... Please wait...'
+    },
+    'fail': {
+        'ru': 'К сожалению, что-то пошло не так. Попробуйте ещё раз позже',
+        'en': 'Unfortunately, something went wrong. Please try again later'
+    },
+    'success_expense': {
+        'ru': 'Ваши расходы\n\n'
+              '(1) <b>event_time</b> — дата и время, указанные при внесении расхода\n'
+              '(2) <b>expense_category</b> — категория расходов, которую вы выбрали\n'
+              '(3) <b>expense_subcategory</b> — подкатегория расходов, которую вы выбрали\n'
+              '(4) <b>amount</b> — сумма, которую вы внесли\n'
+              '(5) <b>location</b> — точка на карте, которую вы отправляли, когда вносили расход',
+        'en': 'Here are your expenses\n\n'
+              '(1) <b>event_time</b> is the date and time you passed on expense log\n'
+              '(2) <b>expense_category</b> is the expense category you\'ve chosen\n'
+              '(3) <b>expense_subcategory</b> is the expense subcategory you\'ve chosen\n'
+              '(4) <b>amount</b> is the amount you\'ve logged\n'
+              '(5) <b>location</b> is a point on map you sent on expense log'
+    },
+    'error_expense': {
+       'ru': 'Не удалось экспортировать расходы...',
+       'en': 'Error exporting expenses...'
+    },
+    'success_income': {
+        'ru': 'Ваши доходы\n\n'
+              '(1) <b>event_date</b> — дата, указанная при внесении дохода\n'
+              '(2) <b>income_type</b> — active/passive отметка о типе дохода, который вы выбрали\n'
+              '(3) <b>amount</b> — сумма дохода, которую вы вносили\n',
+        'en': 'Here are your incomes\n\n'
+              '(1) <b>event_date</b> is the date you passed on income log\n'
+              '(2) <b>income_type</b> is the active/passive type of income you\'ve chosen\n'
+              '(3) <b>amount</b> is the amount of money you\'ve logged\n'
+    },
+    'error_income': {
+       'ru': 'Не удалось экспортировать доходы...',
+       'en': 'Error exporting incomes...'
     }
 }
