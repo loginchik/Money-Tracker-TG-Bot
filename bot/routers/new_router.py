@@ -48,10 +48,12 @@ from bot.static.messages import NEW_ROUTER_MESSAGES
 
 # Router to handle new records creation process
 new_record_router = Router()
-new_record_router.message.middleware(UserLanguageMiddleware())
-new_record_router.callback_query.middleware(UserLanguageMiddleware())
-new_record_router.callback_query.middleware(DBConnectionMiddleware())
-
+ul_middleware = UserLanguageMiddleware()
+db_conn_middleware = DBConnectionMiddleware()
+new_record_router.message.middleware(ul_middleware)
+new_record_router.callback_query.middleware(ul_middleware)
+new_record_router.callback_query.middleware(db_conn_middleware)
+new_record_router.message.middleware(db_conn_middleware)
 
 """
 ============ Abort the process ============
@@ -203,6 +205,7 @@ async def add_expense_init(message: Message, state: FSMContext, user_lang: str):
     Sets state to NewExpenseStates.get_money_amount and asks for money amount input.
     :param message: User message.
     :param state: FSM context.
+    :param user_lang: User language.
     :return: Message.
     """
     await state.clear()
@@ -212,68 +215,73 @@ async def add_expense_init(message: Message, state: FSMContext, user_lang: str):
     return await message.answer(message_text)
 
 
-async def get_expense_category(message: Message, state: FSMContext, user_lang: str):
+async def get_expense_category(message: Message, state: FSMContext, user_lang: str,
+                               db_con: asyncpg.Connection):
     """
     Generates categories inline keyboard and sends it to user.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message with inline keyboard.
     """
-    categories_keyboard = await generate_categories_keyboard(user_lang)
+    categories_keyboard = await generate_categories_keyboard(user_lang, db_con)
     await state.set_state(NewExpenseStates.get_category)
     message_text = NEW_ROUTER_MESSAGES['expense_category'][user_lang]
     return await message.answer(message_text, reply_markup=categories_keyboard)
 
 
 @new_record_router.message(NewExpenseStates.get_money_amount)
-async def save_expense_amount(message: Message, state: FSMContext, user_lang: str):
+async def save_expense_amount(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves money count if its correct and redirects to get_expense_category.
     :param message: User message text.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     raw_money_count = message.text.strip()
     money_amount, error_text = check_input.money_amount_from_user_message(raw_money_count, user_lang)
     if money_amount is not None:
         await state.update_data(amount=money_amount)
-        return await get_expense_category(message, state, user_lang)
+        return await get_expense_category(message, state, user_lang, db_con)
     else:
         return await message.answer(error_text)
 
 
-async def get_expense_subcategory(message: Message, state: FSMContext, user_lang: str):
+async def get_expense_subcategory(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Generates subcategory keyboard and sends it to user.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message with inline keyboard.
     """
     await state.set_state(NewExpenseStates.get_subcategory)
     state_data = await state.get_data()
     category_id = state_data['category']
-    subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang)
+    subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang, db_con)
     message_text = NEW_ROUTER_MESSAGES['expense_subcategory'][user_lang]
     return await message.answer(message_text, reply_markup=subcategories_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_category)
-async def save_expense_category(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_expense_category(callback: CallbackQuery, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves chosen category and redirects to get_expense_subcategory.
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     if callback.data.startswith('category'):
         user_expense_category = int(callback.data.split(':')[1])
         await callback.message.edit_reply_markup(reply_markup=None)
         await state.update_data(category=user_expense_category)
-        return await get_expense_subcategory(callback.message, state, user_lang)
+        return await get_expense_subcategory(callback.message, state, user_lang, db_con)
     else:
         message_text = NEW_ROUTER_MESSAGES['incorrect_category'][user_lang]
         return await callback.answer(message_text)
@@ -294,7 +302,7 @@ async def get_expense_datetime(message: Message, state: FSMContext, user_lang: s
 
 
 @new_record_router.callback_query(NewExpenseStates.get_subcategory)
-async def save_expense_subcategory(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_expense_subcategory(callback: CallbackQuery, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Gets callback data from subcategory keyboard. If 'back' button is pushed,
     sets state to NewExpenseStates.get_category and redirects back to get_expense_category.
@@ -302,12 +310,13 @@ async def save_expense_subcategory(callback: CallbackQuery, state: FSMContext, u
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     await callback.message.edit_reply_markup(reply_markup=None)
     if callback.data == 'back':
         await state.set_state(NewExpenseStates.get_category)
-        return await get_expense_category(callback.message, state, user_lang)
+        return await get_expense_category(callback.message, state, user_lang, db_con)
     elif callback.data.startswith('subcategory'):
         subcategory_id = int(callback.data.split(':')[1])
         await state.update_data(subcategory=subcategory_id)
@@ -373,12 +382,13 @@ async def save_expense_datetime_from_message(message: Message, state: FSMContext
         return await message.answer(error_text)
 
 
-async def save_expense_data(message: Message, state: FSMContext, user_lang: str):
+async def save_expense_data(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves current state data as expense into DB and closes the process.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     total_data = await state.get_data()
@@ -387,7 +397,8 @@ async def save_expense_data(message: Message, state: FSMContext, user_lang: str)
             amount=total_data['amount'],
             subcategory_id=total_data['subcategory'],
             event_time=total_data['event_datetime'],
-            location=total_data['location']
+            location=total_data['location'],
+            db_connection=db_con
         )
     if status:
         message_text = NEW_ROUTER_MESSAGES['expense_saved'][user_lang]
@@ -403,38 +414,42 @@ async def save_expense_data(message: Message, state: FSMContext, user_lang: str)
 
 
 @new_record_router.callback_query(NewExpenseStates.get_location)
-async def skip_expense_location(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def skip_expense_location(callback: CallbackQuery, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Sets event location to None and redirects to save_expense_data.
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     await callback.message.edit_reply_markup(reply_markup=None)
     await state.update_data(location=None)
-    return await save_expense_data(callback.message, state, user_lang)
+    return await save_expense_data(callback.message, state, user_lang, db_con)
 
 
 @new_record_router.message(NewExpenseStates.get_location)
-async def save_expense_location(message: Message, state: FSMContext, bot: Bot, user_lang: str):
+async def save_expense_location(message: Message, state: FSMContext, bot: Bot, user_lang: str,
+                                db_con: asyncpg.Connection):
     """
     If message contains location, saves it. Otherwise, asks again.
     :param message: User message.
     :param state: FSM context.
     :param bot: Bot instance.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     try:
-        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1, reply_markup=None)
+        await bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=message.message_id - 1,
+                                            reply_markup=None)
     except TelegramBadRequest:
         pass
 
     if message.location is not None:
         geometry_point = check_input.tg_location_to_geometry(message.location)
         await state.update_data(location=geometry_point)
-        return await save_expense_data(message, state, user_lang)
+        return await save_expense_data(message, state, user_lang, db_con)
     else:
         return await get_expense_location(message, state, user_lang)
 
@@ -616,61 +631,67 @@ async def get_expense_limit_title(message: Message, state: FSMContext, user_lang
     return await message.answer(message_text, parse_mode=ParseMode.HTML)
 
 
-async def get_expense_limit_category(message: Message, state: FSMContext, user_lang: str):
+async def get_expense_limit_category(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Sets NewExpenseLimitStates.get_category state and asks for new limit category.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     await state.set_state(NewExpenseLimitStates.get_category)
-    categories_keyboard = await generate_categories_keyboard(user_language_code=user_lang)
+    categories_keyboard = await generate_categories_keyboard(user_language_code=user_lang, db_con=db_con)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_category'][user_lang]
     return await message.answer(message_text, reply_markup=categories_keyboard)
 
 
 @new_record_router.message(NewExpenseLimitStates.get_title)
-async def save_expense_limit_title(message: Message, state: FSMContext, user_lang: str):
+async def save_expense_limit_title(message: Message, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Saves expense limit title if it satisfies conditions and redirects to get_expense_limit_category.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     user_title = message.text.strip()
     if len(user_title) in range(1, 101):
         await state.update_data(title=message.text.strip())
-        return await get_expense_limit_category(message, state, user_lang)
+        return await get_expense_limit_category(message, state, user_lang, db_con)
     else:
         message_text = NEW_ROUTER_MESSAGES['expense_limit_title_too_long'][user_lang]
         return await message.reply(message_text)
 
 
-async def get_expense_limit_subcategory(message: Message, state: FSMContext, user_lang: str):
+async def get_expense_limit_subcategory(message: Message, state: FSMContext, user_lang: str,
+                                        db_con: asyncpg.Connection):
     """
     Sets NewExpenseLimitStates.get_subcategory state and asks for subcategory.
     :param message: User message.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     state_data = await state.get_data()
     category_id = state_data['category']
-    subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang)
+    subcategories_keyboard = await generate_subcategories_keyboard(category_id, user_lang, db_con)
     await state.set_state(NewExpenseLimitStates.get_subcategory)
     message_text = NEW_ROUTER_MESSAGES['expense_limit_subcategory'][user_lang]
     return await message.answer(message_text, reply_markup=subcategories_keyboard)
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_category)
-async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext, user_lang: str,
+                                      db_con: asyncpg.Connection):
     """
     Saves user category choice and redirects to get_expense_limit_subcategory.
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     # Remove markup anyway
@@ -678,9 +699,9 @@ async def save_expense_limit_category(callback: CallbackQuery, state: FSMContext
     if callback.data.startswith('category'):
         category_id = int(callback.data.split(':')[-1])
         await state.update_data(category=category_id)
-        return await get_expense_limit_subcategory(callback.message, state, user_lang)
+        return await get_expense_limit_subcategory(callback.message, state, user_lang, db_con)
     else:
-        return await get_expense_limit_category(callback.message, state, user_lang)
+        return await get_expense_limit_category(callback.message, state, user_lang, db_con)
 
 
 async def get_expense_limit_period(message: Message, state: FSMContext, user_lang: str):
@@ -698,12 +719,14 @@ async def get_expense_limit_period(message: Message, state: FSMContext, user_lan
 
 
 @new_record_router.callback_query(NewExpenseLimitStates.get_subcategory)
-async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMContext, user_lang: str,
+                                         db_con: asyncpg.Connection):
     """
     Saves user subcategory choice and redirects to get_expense_limit_period.
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     # Remove markup anyway
@@ -714,9 +737,9 @@ async def save_expense_limit_subcategory(callback: CallbackQuery, state: FSMCont
         return await get_expense_limit_period(callback.message, state, user_lang)
     # Back to list of categories
     elif callback.data == 'back':
-        return await get_expense_limit_category(callback.message, state, user_lang)
+        return await get_expense_limit_category(callback.message, state, user_lang, db_con)
     else:
-        return await get_expense_limit_subcategory(callback.message, state, user_lang)
+        return await get_expense_limit_subcategory(callback.message, state, user_lang, db_con)
 
 
 async def get_expense_limit_current_period_start(message: Message, state: FSMContext, user_lang: str):

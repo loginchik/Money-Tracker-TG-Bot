@@ -1,11 +1,13 @@
+import asyncpg
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardButton, InlineKeyboardBuilder
 
 from db.expense_operations import get_expense_subcategories
 
 
-async def generate_subcategories_keyboard(category_id: int, user_language_code: str) -> InlineKeyboardMarkup:
+async def generate_subcategories_keyboard(category_id: int, user_language_code: str,
+                                          db_con: asyncpg.Connection) -> InlineKeyboardMarkup:
     subcategories_keyboard = InlineKeyboardBuilder()
-    subcategories = await get_expense_subcategories(category_id)
+    subcategories = await get_expense_subcategories(category_id, db_con)
     title_column = 'title_ru' if user_language_code == 'ru' else 'title_en'
     for sub in subcategories:
         button = InlineKeyboardButton(text=sub[title_column], callback_data=f'subcategory:{sub["id"]}')

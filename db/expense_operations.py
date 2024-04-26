@@ -15,33 +15,31 @@ from shapely.geometry.point import Point
 from db.connection import create_connection
 
 
-async def get_expense_categories() -> list[asyncpg.Record]:
+async def get_expense_categories(db_connection: asyncpg.Connection) -> list[asyncpg.Record]:
     """
     Gets all expense categories besides untitled.
+    :param db_connection: Database connection
     :return: List of records from DB.
     """
-    conn = await create_connection()
     query = '''SELECT id, title_ru, title_en FROM shared.expense_category WHERE id != 1;'''
-    categories = await conn.fetch(query)
-    await conn.close()
+    categories = await db_connection.fetch(query)
     return categories
 
 
-async def get_expense_subcategories(category_id: int) -> list[asyncpg.Record]:
+async def get_expense_subcategories(category_id: int, db_connection: asyncpg.Connection) -> list[asyncpg.Record]:
     """
     Gets all expense subcategories besides untitled for the defined category_id.
     :param category_id: Category ID.
+    :param db_connection: Database connection
     :return: List of records from DB.
     """
-    conn = await create_connection()
     query = f'''SELECT id, title_ru, title_en FROM shared.expense_subcategory WHERE category = {category_id};'''
-    subcategories = await conn.fetch(query)
-    await conn.close()
+    subcategories = await db_connection.fetch(query)
     return subcategories
 
 
 async def add_expense(user_id: int, amount: float, subcategory_id: int, event_time: dt.datetime,
-                      location: Point | None) -> bool:
+                      location: Point | None, db_connection: asyncpg.Connection) -> bool:
     """
     Saves new expense data to DB.
     :param user_id: User tg_id.
@@ -49,20 +47,19 @@ async def add_expense(user_id: int, amount: float, subcategory_id: int, event_ti
     :param subcategory_id: Subcategory id.
     :param event_time: Event timestamp.
     :param location: Geometry in 4326.
+    :param db_connection: Database connection
     """
-    conn = await create_connection()
-    try:
-        pg_location = location.wkt if location is not None else None
-        query = f'''INSERT INTO user_based.expense_{user_id} 
-        (user_id, amount, subcategory, event_time, location) 
-        VALUES ($1, $2, $3, $4, $5);'''
-        await conn.execute(query, user_id, amount, subcategory_id, event_time, pg_location)
-        return True
-    except Exception as e:
-        logging.error(e)
-        return False
-    finally:
-        await conn.close()
+    async with db_connection.transaction():
+        try:
+            pg_location = location.wkt if location is not None else None
+            query = f'''INSERT INTO user_based.expense_{user_id} 
+            (user_id, amount, subcategory, event_time, location) 
+            VALUES ($1, $2, $3, $4, $5);'''
+            await db_connection.execute(query, user_id, amount, subcategory_id, event_time, pg_location)
+            return True
+        except Exception as e:
+            logging.error(e)
+            return False
 
 
 def raw_data_to_gpd(raw_data) -> gpd.GeoDataFrame:
