@@ -1,12 +1,29 @@
 """
 Filter that checks if a user exists.
 """
+import logging
 
+import asyncpg
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
-from db.connection import create_connection
+from db.connection import database_url
 from db.user_operations import user_exists
+
+
+class DBPoolGenerator:
+    def __init__(self):
+        self.pool = None
+
+    async def __call__(self):
+        if self.pool is None:
+            self.pool = await asyncpg.create_pool(database_url())
+            logging.info('Created pool')
+
+        yield self.pool
+
+
+pool_generator = DBPoolGenerator()
 
 
 class UserExists(BaseFilter):
@@ -17,12 +34,10 @@ class UserExists(BaseFilter):
         super().__init__()
 
     async def __call__(self, message: Message) -> bool:
-        # Create async connection to DB
-        db_connection = await create_connection()
-        # Get user status
-        user_id = message.from_user.id
-        status: bool = await user_exists(user_id, db_connection)
-        # Close connection to DB
-        await db_connection.close()
-        # Return user status
-        return status
+        async for pool in pool_generator():
+            async with pool.acquire() as connection:
+                # Get user status
+                user_id = message.from_user.id
+                status: bool = await user_exists(user_id, connection)
+            # Return user status
+            return status
