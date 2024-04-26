@@ -18,8 +18,6 @@ class DBPoolGenerator:
     async def __call__(self):
         if self.pool is None:
             self.pool = await asyncpg.create_pool(database_url())
-            logging.info('Created pool')
-
         yield self.pool
 
 

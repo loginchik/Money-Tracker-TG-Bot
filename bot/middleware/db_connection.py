@@ -21,7 +21,6 @@ class DBConnectionMiddleware(BaseMiddleware):
 
         async with self.pool.acquire() as connection:
             data['db_con'] = connection
-            logging.debug('Connection passed to handler data')
             await handler(event, data)
 
         return

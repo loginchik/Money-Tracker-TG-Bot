@@ -12,6 +12,7 @@ import asyncio
 import datetime as dt
 import logging
 
+import asyncpg
 from aiogram import Router, Bot
 from aiogram.enums import ParseMode
 from aiogram.types import Message, CallbackQuery
@@ -26,6 +27,7 @@ import db.expense_limit_operations
 
 from bot.filters.user_exists import UserExists
 from bot.middleware.user_language import UserLanguageMiddleware
+from bot.middleware.db_connection import DBConnectionMiddleware
 
 from bot.states.registration import RegistrationStates
 from bot.states.new_income import NewIncomeStates
@@ -48,6 +50,7 @@ from bot.static.messages import NEW_ROUTER_MESSAGES
 new_record_router = Router()
 new_record_router.message.middleware(UserLanguageMiddleware())
 new_record_router.callback_query.middleware(UserLanguageMiddleware())
+new_record_router.callback_query.middleware(DBConnectionMiddleware())
 
 
 """
@@ -72,13 +75,13 @@ async def abort_process(message: Message, state: FSMContext, user_lang: str):
 
 
 @new_record_router.message(Command(commands=['abort']), StateFilter(None))
-async def no_abort(message: Message, state: FSMContext, user_lang: str):
+async def no_abort(message: Message, user_lang: str):
     message_text = NEW_ROUTER_MESSAGES['nothing_to_abort'][user_lang]
     await message.answer(message_text)
 
 
 @new_record_router.message(Command(commands=['abort']), StateFilter(ExportStates))
-async def impossible_to_abort(message: Message, state: FSMContext, user_lang: str):
+async def impossible_to_abort(message: Message, user_lang: str):
     message_text = NEW_ROUTER_MESSAGES['impossible_to_abort'][user_lang]
     await message.answer(message_text)
 
@@ -138,7 +141,8 @@ async def save_language_preference(callback: CallbackQuery, state: FSMContext):
 
 
 @new_record_router.callback_query(RegistrationStates.decision)
-async def user_registration_decision(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def user_registration_decision(callback: CallbackQuery, state: FSMContext, user_lang: str,
+                                     db_con: asyncpg.Connection):
     """
     Gets user decision in terms of registration. If user want to register, adds their data to db
     and continues initial command process. Otherwise, doesn't register the user and notifies
@@ -146,6 +150,8 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext,
 
     :param callback: Callback query from registration inline keyboard.
     :param state: Current FSM context.
+    :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     # Get user decision from callback
@@ -166,7 +172,7 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext,
         # Create user and notify the user
         await asyncio.sleep(.5)
         try:
-            await db.user_operations.create_user(**user_data)
+            await db.user_operations.create_user(db_con, **user_data)
             notification_text = NEW_ROUTER_MESSAGES['registration_success'][state_data['lang']]
             await callback.answer(notification_text)
             message_text = NEW_ROUTER_MESSAGES['after_registration'][state_data['lang']]
