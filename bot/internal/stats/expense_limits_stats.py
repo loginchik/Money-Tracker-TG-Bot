@@ -14,6 +14,8 @@ BAR_COLOR = '#7E30E1'
 
 
 def limits_bar(stats: pd.DataFrame, user_lang: str) -> bytes:
+    plt.rcParams['font.family'] = 'Helvetica Neue, sans serif'
+
     stats = stats.sort_values(by=['free'], ascending=True)
     # Create figure and axes. Figure size depends on expense limits count to adjust graph height
     figure_height = max(2, round(stats.shape[0] * 0.5))
@@ -37,6 +39,7 @@ def limits_bar(stats: pd.DataFrame, user_lang: str) -> bytes:
     axes.set_yticks([], [])
     xlabel_text = 'Доступный баланс, % от предела' if user_lang == 'ru' else 'Balance available, % of limit'
     axes.set_xlabel(xlabel_text, color=BAR_COLOR)
+    axes.set_title(dt.datetime.now().strftime('%d.%m.%Y'), color=BAR_COLOR)
     # Configure spices: hide top and left, color bottom and right
     axes.spines['top'].set_visible(False)
     axes.spines['left'].set_visible(False)
