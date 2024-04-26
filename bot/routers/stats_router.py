@@ -1,3 +1,6 @@
+import logging
+
+import asyncpg
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
@@ -12,6 +15,7 @@ from bot.internal.stats import get_account_stats
 stats_router = Router()
 stats_router.message.middleware(UserLanguageMiddleware())
 stats_router.callback_query.middleware(UserLanguageMiddleware())
+stats_router.callback_query.middleware(DBConnectionMiddleware())
 
 
 @stats_router.message(Command(commands=['stats']), ~UserExists(), StateFilter(None))
@@ -34,11 +38,14 @@ async def stats_choice(message: Message, user_lang: str):
 
 
 @stats_router.callback_query(F.data.startswith('stats_'), UserExists(), StateFilter(None))
-async def send_stats(callback: CallbackQuery, user_lang: str):
-    await callback.message.answer(callback.data)
-
+async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Connection):
     if callback.data == 'stats_account':
-        report_message = await get_account_stats(callback.from_user.id, user_lang)
-        return await callback.message.answer(report_message)
+        try:
+            report_message = await get_account_stats(callback.from_user.id, user_lang, db_con)
+            return await callback.message.answer(report_message)
+        except Exception as e:
+            logging.error(e)
+            message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
+            return await callback.message.answer(message_text)
     else:
         await callback.answer(callback.data)

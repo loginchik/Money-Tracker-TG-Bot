@@ -318,6 +318,10 @@ STATS_ROUTER_MESSAGES = {
         'ru': 'Выберите, какую статистику вы хотите',
         'en': 'Choose the statistics to get'
     },
+    'error': {
+        'ru': 'К сожалению, что-то пошло не так. Попробуйте ещё раз позднее',
+        'en': 'Unfortunately, something went wrong. Please try again later'
+    },
     'account_stats': {
         'ru': 'Вы пользуетесь ботом уже {} дней (с {}). '
               'За это время вы зафиксировали {} расходов на общую '
