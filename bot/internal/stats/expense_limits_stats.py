@@ -23,31 +23,24 @@ def limits_bar(stats: pd.DataFrame, user_lang: str) -> bytes:
     axes.set_facecolor(BG_COLOR)
 
     # Put bars on graph
-    axes.barh(width=stats['free'], y=stats['title'], color=BAR_COLOR, height=0.6)
+    axes.barh(width=stats['free'].apply(lambda x: 0 if x < 0 else x), y=stats['title'], color=BAR_COLOR, height=0.6)
     # Put line on 0
     axes.axvline(x=0, color=BAR_COLOR, lw=0.75)
-    # Put limits headers on graph
-    for i in range(stats.shape[0]):
-        axes.text(x=stats['free'][i] + 1 if stats['free'][0] > 0 else 1,
-                  y=i - 0.1,
-                  s=stats['title'][i],
-                  color=BAR_COLOR
-                  )
 
     # Set ticks
-    axes.set_xticks(range(-100, 101, 25), range(-100, 101, 25))
-    axes.set_yticks([], [])
+    x_ticks_range = list(range(0, 101, 25))
+    axes.set_xticks(x_ticks_range, x_ticks_range)
     xlabel_text = 'Доступный баланс, % от предела' if user_lang == 'ru' else 'Balance available, % of limit'
     axes.set_xlabel(xlabel_text, color=BAR_COLOR)
     axes.set_title(dt.datetime.now().strftime('%d.%m.%Y'), color=BAR_COLOR)
     # Configure spices: hide top and left, color bottom and right
     axes.spines['top'].set_visible(False)
-    axes.spines['left'].set_visible(False)
     axes.spines['left'].set_color(BAR_COLOR)
     axes.spines['bottom'].set_color(BAR_COLOR)
     axes.spines['right'].set_visible(False)
     # Configure ticks colors
     axes.tick_params(axis='x', colors=BAR_COLOR)
+    axes.tick_params(axis='y', colors=BAR_COLOR)
     plt.tight_layout()
 
     # Save to bytes

@@ -5,7 +5,6 @@ from io import BytesIO
 import asyncpg
 import matplotlib.pyplot as plt
 
-from bot.static.messages import STATS_ROUTER_MESSAGES
 from db.expense_operations import get_user_expenses_in_daterange
 
 
@@ -95,6 +94,5 @@ async def get_last_month_expenses(user_id: int, user_lang: str, db_connection: a
     subcategories_bar_bytes = categories_bar(subcategories_stat, user_lang)
 
     day_stat = data.groupby(data['event_time'].dt.date)['amount'].sum().sort_index(ascending=True)
-    print(day_stat)
     day_stat_bar = dates_linechart(day_stat)
     return categories_bar_bytes, subcategories_bar_bytes, day_stat_bar
