@@ -16,6 +16,7 @@ from bot.states.export_data import ExportStates
 import db.expense_operations
 import db.income_operations
 
+
 export_router = Router()
 export_router.message.middleware(UserLanguageMiddleware())
 export_router.message.middleware(DBConnectionMiddleware())
@@ -27,11 +28,23 @@ async def no_export(message: Message, user_lang: str):
     await message.answer(message_text)
 
 
-async def export_expenses(message: Message, user_id: int, user_lang: str, bot: Bot, state: FSMContext,
-                          db_con: asyncpg.Connection) -> bool:
+def expense_temp_filenames(user_id: int) -> tuple[str, str]:
     exp_temp_filename = f'{user_id}_{dt.datetime.now().strftime("%d%H%M%S")}_expenses'
     exp_temp_filename_gpkg = exp_temp_filename + '.gpkg'
     exp_temp_filename_csv = exp_temp_filename + '.csv'
+    return exp_temp_filename_gpkg, exp_temp_filename_csv
+
+
+def expense_out_filenames() -> tuple[str, str]:
+    out_filename = f'{dt.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}_expenses'
+    exp_filename_csv = out_filename + '.csv'
+    exp_filename_gpkg = out_filename + '.gpkg'
+    return exp_filename_gpkg, exp_filename_csv
+
+
+async def export_expenses(message: Message, user_id: int, user_lang: str, bot: Bot, state: FSMContext,
+                          db_con: asyncpg.Connection) -> bool:
+    exp_temp_filename_gpkg, exp_temp_filename_csv = expense_temp_filenames(user_id)
     try:
         # Save expenses data in files
         expenses_data = await db.expense_operations.get_user_expenses(user_id, user_lang, db_con)
@@ -41,8 +54,7 @@ async def export_expenses(message: Message, user_id: int, user_lang: str, bot: B
         expenses_data.to_file(exp_temp_filename_csv, encoding='utf-8', driver='CSV', geometry='AS_WKT')
 
         # Send expenses
-        exp_filename_csv = f'{dt.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}_expenses_data.csv'
-        exp_filename_gpkg = f'{dt.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}_expenses_data.gpkg'
+        exp_filename_gpkg, exp_filename_csv = expense_out_filenames()
         fs_csv = FSInputFile(path=exp_temp_filename_csv, filename=exp_filename_csv)
         fs_gpkg = FSInputFile(path=exp_temp_filename_gpkg, filename=exp_filename_gpkg)
         export_expenses_text = EXPORT_ROUTER_MESSAGES['success_expense'][user_lang]
@@ -67,7 +79,7 @@ async def export_expenses(message: Message, user_id: int, user_lang: str, bot: B
 async def export_incomes(message: Message, user_id: int, user_lang: str, bot: Bot, state: FSMContext,
                          db_con: asyncpg.Connection) -> bool:
     income_temp_filename = f'{user_id}_{dt.datetime.now().strftime("%d%H%M%S")}_expenses.csv'
-    income_out_filename = f'{dt.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}_expenses_incomes.csv'
+    income_out_filename = f'{dt.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")}_incomes.csv'
     try:
         incomes_data = await db.income_operations.get_user_income(user_id, db_con)
         if incomes_data is None:
