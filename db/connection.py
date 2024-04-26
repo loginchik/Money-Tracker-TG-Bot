@@ -2,11 +2,8 @@
 Package contains scripts that create connection to the database. Main function for export and
 external use is ``create_connection``.
 """
-import logging
-import os
 
 import asyncpg
-import psycopg2
 from settings import db_secrets
 
 
@@ -21,30 +18,11 @@ def database_url() -> str:
     return db_url
 
 
-async def create_connection() -> asyncpg.Connection | None:
-    """
-    Creates database async connection.
-    :return: Async connection to DB.
-    """
+class DBPoolGenerator:
+    def __init__(self):
+        self.pool = None
 
-    db_url = database_url()
-    try:
-        connection = await asyncpg.connect(dsn=db_url)
-        return connection
-    except Exception as e:
-        logging.critical(e)
-        return None
-
-
-def create_sync_connection():
-    """
-    Creates database sync connection.
-    :return: Sync connection to DB via psycopg2.
-    """
-    db_url = database_url()
-    try:
-        connection = psycopg2.connect(dsm=db_url)
-        return connection
-    except Exception as e:
-        logging.critical(e)
-        return None
+    async def __call__(self):
+        if self.pool is None:
+            self.pool = await asyncpg.create_pool(database_url())
+        yield self.pool

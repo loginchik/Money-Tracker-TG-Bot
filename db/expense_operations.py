@@ -12,8 +12,6 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry.point import Point
 
-from db.connection import create_connection
-
 
 async def get_expense_categories(db_connection: asyncpg.Connection) -> list[asyncpg.Record]:
     """
