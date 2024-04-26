@@ -3,35 +3,30 @@ Entry point for bot application to run.
 """
 
 import asyncio
-import os.path
 import logging
 
 from aiogram import Bot
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.enums import ParseMode
-from dotenv import dotenv_values
 
 from bot.routers.main_router import dp
 from bot.static.commands import en_commands_list, ru_commands_list
+from settings import bot_secrets
 
 
 # Start logging
 logging.basicConfig(level=logging.INFO)
-# Read environment variables to run the bot
-base_dir = os.path.split(os.path.abspath(__file__))[0]
-secrets_path = os.path.join(base_dir, ".env")
-secrets = dotenv_values(secrets_path)
 # Create bot instance
 props = DefaultBotProperties(parse_mode=ParseMode.HTML)
-bot = Bot(token=secrets['BOT_TOKEN'], default=props)
+bot = Bot(token=bot_secrets['BOT_TOKEN'], default=props)
 
 
 async def on_startup():
-    await bot.send_message(chat_id=secrets['ADMIN'], text='Bot started')
+    await bot.send_message(chat_id=bot_secrets['ADMIN'], text='Bot started')
 
 
 async def on_shutdown():
-    await bot.send_message(chat_id=secrets['ADMIN'], text='Bot stopped')
+    await bot.send_message(chat_id=bot_secrets['ADMIN'], text='Bot stopped')
 
 
 dp.startup.register(on_startup)

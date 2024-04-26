@@ -7,7 +7,7 @@ import os
 
 import asyncpg
 import psycopg2
-from dotenv import dotenv_values
+from settings import db_secrets
 
 
 def database_url() -> str:
@@ -15,11 +15,8 @@ def database_url() -> str:
     Get database URL from environment variables.
     :return: DB URL.
     """
-    base_dir = os.path.split(os.path.abspath(__file__))[0]
-    secrets_path = os.path.join(base_dir, ".env")
-    secrets = dotenv_values(secrets_path)
-    user_password = f'{secrets["DB_USER"]}:{secrets["DB_PASSWORD"]}'
-    host_port_dbname = f'{secrets["DB_HOST"]}:{secrets["DB_PORT"]}/{secrets["DB_NAME"]}'
+    user_password = f'{db_secrets["DB_USER"]}:{db_secrets["DB_PASSWORD"]}'
+    host_port_dbname = f'{db_secrets["DB_HOST"]}:{db_secrets["DB_PORT"]}/{db_secrets["DB_NAME"]}'
     db_url = f'postgresql://{user_password}@{host_port_dbname}'
     return db_url
 
