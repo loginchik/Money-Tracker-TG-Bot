@@ -347,5 +347,9 @@ STATS_ROUTER_MESSAGES = {
               'During this time, you\'ve recorded {} expenses '
               'for a total of {} and {} incomes for a total of {}.'
               'Keep it up!'
+    },
+    'empty_stats': {
+        'ru': 'Нет данных для построения статистики...',
+        'en': 'There is not data to report...'
     }
 }

@@ -51,11 +51,14 @@ async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Co
             return await callback.message.answer(message_text)
     elif callback.data == 'stats_expense_limits':
         try:
-            report_text, report_img = await expense_limits_stats(callback.from_user.id, db_con, user_lang)
+            report_data = await expense_limits_stats(callback.from_user.id, db_con, user_lang)
+            if report_data is None:
+                return callback.message.answer(STATS_ROUTER_MESSAGES['empty_stats'][user_lang])
+
+            report_text, report_img = report_data
             media = BufferedInputFile(file=report_img, filename='expense_limits.png')
             await bot.send_photo(chat_id=callback.message.chat.id, photo=media)
             return await callback.message.answer(report_text)
-
         except Exception as e:
             logging.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
