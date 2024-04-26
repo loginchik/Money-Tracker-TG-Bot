@@ -115,12 +115,12 @@ async def export_users_data(message: Message, user_lang: str, state: FSMContext,
 
 
 @export_router.message(ExportStates.export_expenses)
-async def exporting_expenses_message(message: Message, user_lang: str, state: FSMContext):
+async def exporting_expenses_message(message: Message, user_lang: str):
     message_text = EXPORT_ROUTER_MESSAGES['expense_wait'][user_lang]
     await message.answer(message_text)
 
 
 @export_router.message(ExportStates.export_incomes)
-async def export_incomes_message(message: Message, user_lang: str, state: FSMContext):
+async def export_incomes_message(message: Message, user_lang: str):
     message_text = EXPORT_ROUTER_MESSAGES['income_wait'][user_lang]
     await message.answer(message_text)
