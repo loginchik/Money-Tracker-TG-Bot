@@ -68,3 +68,20 @@ async def subcategory_expense_limit_stats(subcategory_id: int, user_id: int, use
         logging.error(e)
         return None
 
+
+async def delete_expense_limit(user_id: int, user_title: str, db_connection: asyncpg.Connection) -> bool:
+    """
+    Deletes expense limit associated with given user id and user title from database.
+    :param user_id: User telegram id.
+    :param user_title: User expense limit title.
+    :param db_connection: Database connection.
+    :return: Success or failure.
+    """
+    async with db_connection.transaction():
+        try:
+            await db_connection.execute(f'''DELETE FROM user_based.expense_limit_{user_id} el
+            WHERE el.user_title = $1;''', user_title)
+            return True
+        except Exception as e:
+            logging.error(e)
+            return False

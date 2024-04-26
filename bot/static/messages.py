@@ -22,6 +22,23 @@ DELETE_ROUTER_MESSAGES = {
     'cancel': {
         'ru': 'Данные сохранены. Спасибо, что остаётесь с нами!',
         'en': 'Your data is kept in safe. Thank you for staying with us!'
+    },
+
+    'no_limits': {
+        'ru': 'У вас нет настроенных пределов расходов, нечего удалять',
+        'en': 'You have no expense limits configured, there is nothing to delete'
+    },
+    'limit_title': {
+        'ru': 'Выберите лимит, который хотите удалить',
+        'en': 'Choose limit to delete'
+    },
+    'limit_delete_success': {
+        'ru': 'Предел расходов удалён',
+        'en': 'Expense limit is deleted'
+    },
+    'limit_delete_fail': {
+        'ru': 'К сожалению, произошла ошибка, данные сохранены. Пожалуйста, попробуйте позже',
+        'en': 'Unfortunately, internal error occurred, data is still saved. Please try again.'
     }
 }
 
