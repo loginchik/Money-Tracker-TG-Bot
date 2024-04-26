@@ -5,6 +5,7 @@ that is included into main to be able to get and handle pending updates.
 """
 import logging
 
+import asyncpg
 from aiogram import Router
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
@@ -13,6 +14,7 @@ from aiogram.types import Message, CallbackQuery
 
 import db.user_operations
 from bot.middleware.user_language import UserLanguageMiddleware
+from bot.middleware.db_connection import DBConnectionMiddleware
 from bot.states.registration import DataDeletionStates
 from bot.keyboards.bool_keyboard import generate_bool_keyboard
 from bot.filters.user_exists import UserExists
@@ -23,6 +25,7 @@ from bot.static.messages import DELETE_ROUTER_MESSAGES
 delete_router = Router()
 delete_router.message.middleware(UserLanguageMiddleware())
 delete_router.callback_query.middleware(UserLanguageMiddleware())
+delete_router.callback_query.middleware(DBConnectionMiddleware())
 
 
 @delete_router.message(Command(commands=['delete_my_data']), ~UserExists())
@@ -55,7 +58,7 @@ async def delete_user_data(message: Message, state: FSMContext, user_lang: str):
 
 
 @delete_router.callback_query(DataDeletionStates.decision)
-async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_lang: str):
+async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
     """
     Catches callback from user deletion decision. If user confirms their decision, all data
     in database, including tables and records, is deleted, user preferred languages is dropped
@@ -64,6 +67,7 @@ async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_la
     :param callback: Callback query.
     :param state: FSM context.
     :param user_lang: User language.
+    :param db_con: Database connection.
     :return: Message.
     """
     # Remove inline keyboard anyway.
@@ -73,7 +77,7 @@ async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_la
         user_id = callback.from_user.id
         # Successful deletion.
         try:
-            await db.user_operations.delete_user_data(user_id)
+            await db.user_operations.delete_user_data(user_id, db_con)
             del USER_LANGUAGE_PREFERENCES[user_id]
             await state.clear()
             message_text = DELETE_ROUTER_MESSAGES['success'][user_lang]

@@ -75,7 +75,6 @@ async def create_user(**user_data: dict) -> bool:
         logging.critical(e)
         result = False
 
-
     # Create partition table in expense limit table
     try:
         create_expense_limit_partition_query = f'''CREATE TABLE IF NOT EXISTS user_based.expense_limit_{user_tg_id}
@@ -91,20 +90,18 @@ async def create_user(**user_data: dict) -> bool:
     return result
 
 
-async def delete_user_data(user_id: int):
-    conn = await create_connection()
-    try:
-        delete_user_query = '''DELETE FROM shared.user WHERE tg_id = $1;'''
-        await conn.execute(delete_user_query, user_id)
+async def delete_user_data(user_id: int, db_connection: asyncpg.Connection) -> bool:
+    async with db_connection.transaction():
+        try:
+            delete_user_query = '''DELETE FROM shared.user WHERE tg_id = $1;'''
+            await db_connection.execute(delete_user_query, user_id)
+            delete_user_expense_partition = f'DROP TABLE IF EXISTS user_based.expense_{user_id};'
+            await db_connection.execute(delete_user_expense_partition)
+            delete_user_income_partition = f'DROP TABLE IF EXISTS user_based.income_{user_id};'
+            await db_connection.execute(delete_user_income_partition)
 
-        delete_user_expense_partition = f'DROP TABLE IF EXISTS user_based.expense_{user_id};'
-        await conn.execute(delete_user_expense_partition)
+            return True
 
-        delete_user_income_partition = f'DROP TABLE IF EXISTS user_based.income_{user_id};'
-        await conn.execute(delete_user_income_partition)
-        return True
-    except Exception as e:
-        logging.error(e)
-        return False
-    finally:
-        await conn.close()
+        except Exception as e:
+            logging.error(e)
+            return False
