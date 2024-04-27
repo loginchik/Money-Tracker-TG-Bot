@@ -11,6 +11,8 @@ from db.expense_operations import get_user_expenses_in_daterange
 BG_COLOR = '#F3F8FF'
 BAR_COLOR = '#7E30E1'
 
+logger = logging.getLogger('statsGenerator')
+
 
 def categories_bar(stats, user_lang: str) -> bytes:
     plt.rcParams['font.family'] = 'Helvetica Neue, sans serif'
@@ -45,7 +47,7 @@ def categories_bar(stats, user_lang: str) -> bytes:
         buffer.getvalue()
         return buffer.getvalue()
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
     finally:
         buffer.close()
 
@@ -75,7 +77,7 @@ def dates_linechart(stats):
         buffer.getvalue()
         return buffer.getvalue()
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
     finally:
         buffer.close()
 

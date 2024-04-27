@@ -25,6 +25,10 @@ from bot.static.user_languages import USER_LANGUAGE_PREFERENCES
 from bot.static.messages import DELETE_ROUTER_MESSAGES
 
 
+logger = logging.getLogger('deleteRouter')
+logger.setLevel(logging.INFO)
+
+
 delete_router = Router()
 ul_middleware = UserLanguageMiddleware()
 delete_router.message.middleware(ul_middleware)
@@ -91,7 +95,7 @@ async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_la
             return await callback.message.answer(message_text)
         # Internal error.
         except Exception as e:
-            logging.error(e)
+            delete_router.error(e)
             message_text = DELETE_ROUTER_MESSAGES['error'][user_lang]
             await state.clear()
             return await callback.message.answer(message_text)
@@ -126,8 +130,9 @@ async def delete_chosen_expense_limit(callback: CallbackQuery, state: FSMContext
     # Otherwise, bot is trying to delete data from db
     try:
         delete_status = db.expense_limit_operations.delete_expense_limit(callback.from_user.id, callback.data, db_con)
+        logger.info('Delete expense_limit')
     except Exception as e:
-        logging.error(e)
+        delete_router.error(e)
         delete_status = False
 
     if delete_status:

@@ -12,6 +12,8 @@ from db.expense_limit_operations import user_expense_limits_info
 BG_COLOR = '#F3F8FF'
 BAR_COLOR = '#7E30E1'
 
+logger = logging.getLogger('statsGenerator')
+
 
 def limits_bar(stats: pd.DataFrame, user_lang: str) -> bytes:
     plt.rcParams['font.family'] = 'Helvetica Neue, sans serif'
@@ -51,7 +53,7 @@ def limits_bar(stats: pd.DataFrame, user_lang: str) -> bytes:
         buffer.getvalue()
         return buffer.getvalue()
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
     finally:
         buffer.close()
 

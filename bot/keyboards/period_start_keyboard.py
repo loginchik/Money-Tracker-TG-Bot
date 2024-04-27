@@ -3,7 +3,7 @@ import datetime as dt
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardButton, InlineKeyboardBuilder
 
 
-async def generate_period_start_keyboard(user_period: int):
+async def generate_period_start_keyboard(user_period: int) -> InlineKeyboardMarkup:
     current_date = dt.date.today()
 
     if user_period == 1:

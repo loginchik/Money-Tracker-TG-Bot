@@ -55,6 +55,10 @@ new_record_router.callback_query.middleware(ul_middleware)
 new_record_router.callback_query.middleware(db_conn_middleware)
 new_record_router.message.middleware(db_conn_middleware)
 
+
+logger = logging.getLogger('newRouter')
+logger.setLevel(logging.ERROR)
+
 """
 ============ Abort the process ============
 """
@@ -181,7 +185,7 @@ async def user_registration_decision(callback: CallbackQuery, state: FSMContext,
             message_text = message_text.format(state_data['command'])
             return await callback.message.answer(message_text)
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
             message_text = NEW_ROUTER_MESSAGES['registration_fail'][state_data['lang']]
             return await callback.message.answer(message_text)
         finally:
@@ -813,7 +817,7 @@ async def save_expense_limit_period_start_from_button(callback: CallbackQuery, s
         await state.update_data(period_start=date_from_callback)
         return await get_expense_limit_value(callback.message, state, user_lang)
     except (ValueError, Exception) as e:
-        logging.error(e)
+        logger.error(e)
         return await get_expense_limit_current_period_start(callback.message, state, user_lang)
 
 

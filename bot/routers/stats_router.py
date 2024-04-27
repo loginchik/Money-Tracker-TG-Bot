@@ -21,6 +21,9 @@ stats_router.callback_query.middleware(UserLanguageMiddleware())
 stats_router.callback_query.middleware(DBConnectionMiddleware())
 
 
+logger = logging.getLogger('statsRouter')
+
+
 @stats_router.message(Command(commands=['stats']), ~UserExists(), StateFilter(None))
 async def no_stats_message(message: Message, user_lang: str):
     """
@@ -47,7 +50,7 @@ async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Co
             report_message = await get_account_stats(callback.from_user.id, user_lang, db_con)
             return await callback.message.answer(report_message)
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
             return await callback.message.answer(message_text)
     elif callback.data == 'stats_expense_limits':
@@ -61,7 +64,7 @@ async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Co
             await bot.send_photo(chat_id=callback.message.chat.id, photo=media)
             return await callback.message.answer(report_text)
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
             return await callback.message.answer(message_text)
     elif callback.data == 'stats_last_month_expense':
@@ -79,7 +82,7 @@ async def send_stats(callback: CallbackQuery, user_lang: str, db_con: asyncpg.Co
             await bot.send_photo(chat_id=callback.message.chat.id, photo=day_stats)
 
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
             message_text = STATS_ROUTER_MESSAGES['error'][user_lang]
             return await callback.message.answer(message_text)
     else:

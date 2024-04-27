@@ -21,6 +21,8 @@ export_router = Router()
 export_router.message.middleware(UserLanguageMiddleware())
 export_router.message.middleware(DBConnectionMiddleware())
 
+logger = logging.getLogger('exportRouter')
+
 
 @export_router.message(Command('export_my_data'), ~UserExists(), StateFilter(None))
 async def no_export(message: Message, user_lang: str):
@@ -63,7 +65,7 @@ async def export_expenses(message: Message, user_id: int, user_lang: str, bot: B
         await bot.send_message(chat_id=message.chat.id, text=export_expenses_text)
         return True
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
         error_message = EXPORT_ROUTER_MESSAGES['error_expense'][user_lang]
         await message.answer(error_message)
         return False
@@ -91,7 +93,7 @@ async def export_incomes(message: Message, user_id: int, user_lang: str, bot: Bo
         await message.answer(export_incomes_text)
         return True
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
         error_message = EXPORT_ROUTER_MESSAGES['error_income'][user_lang]
         await message.answer(error_message)
         return False
@@ -113,12 +115,12 @@ async def export_users_data(message: Message, user_lang: str, state: FSMContext,
     try:
         expense_success = await export_expenses(message, user_id, user_lang, bot, state, db_con)
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
         expense_success = False
     try:
         income_success = await export_incomes(message, user_id, user_lang, bot, state, db_con)
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
         income_success = False
 
     if not any([income_success, expense_success]):
