@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "money tracker bot"
+version = "1.0.0"
+description = "TG bot to track expences and incomes"
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "3.11.9"
+aiogram = "^3.7.0"
+pandas = "^2.2.2"
+geopandas = "^0.14.4"
+asyncpg = "^0.29.0"
+python-dotenv = "^1.0.1"
+matplotlib = "^3.9.0"
+psycopg2-binary = "^2.9.9"
+sqlalchemy = "^2.0.30"
+geoalchemy2 = "^0.15.1"
+greenlet = "^3.0.3"
+loguru = "^0.7.2"
+alembic = "^1.13.1"
+pytest = "^8.2.2"
+pytest-asyncio = "^0.23.7"
+pytest-async-sqlalchemy = "^0.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

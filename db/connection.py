@@ -4,18 +4,26 @@ external use is ``create_connection``.
 """
 
 import asyncpg
-from settings import db_secrets
+from configs import DB_HOST, DB_PORT, DB_NAME, DB_USER_NAME, DB_PASSWORD, TEST_DB_NAME
 
 
-def database_url() -> str:
+def database_url(async_=False, test=False) -> str:
     """
     Get database URL from environment variables.
-    :return: DB URL.
+
+    Args:
+        async_ (bool): Asynchronous mode.
+        test (bool): Test database connection.
+
+    Returns:
+        str: Database URL.
     """
-    user_password = f'{db_secrets["DB_USER"]}:{db_secrets["DB_PASSWORD"]}'
-    host_port_dbname = f'{db_secrets["DB_HOST"]}:{db_secrets["DB_PORT"]}/{db_secrets["DB_NAME"]}'
-    db_url = f'postgresql://{user_password}@{host_port_dbname}'
-    return db_url
+    user_password = f'{DB_USER_NAME}:{DB_PASSWORD}'
+    host_port_dbname = f'{DB_HOST}:{DB_PORT}/{TEST_DB_NAME if test else DB_NAME}'
+    if not async_:
+        return f'postgresql://{user_password}@{host_port_dbname}'
+    else:
+        return f'postgresql+asyncpg://{user_password}@{host_port_dbname}'
 
 
 class DBPoolGenerator:

@@ -1,0 +1,290 @@
+{
+    "1": {
+        "title_ru": "Без названия",
+        "title_en": "Untitled",
+        "slug": "untitled",
+        "category_id": 1
+    },
+    "3": {
+        "title_ru": "Транспорт",
+        "title_en": "Transport",
+        "slug": "transport",
+        "category_id": 1
+    },
+    "2": {
+        "title_ru": "Парковка",
+        "title_en": "Parking",
+        "slug": "parking",
+        "category_id": 2
+    },
+    "4": {
+        "title_ru": "Топливо",
+        "title_en": "Fuel",
+        "slug": "fuel",
+        "category_id": 2
+    },
+    "5": {
+        "title_ru": "Обслуживание",
+        "title_en": "Service",
+        "slug": "car_service",
+        "category_id": 2
+    },
+    "6": {
+        "title_ru": "Аренда",
+        "title_en": "Rent",
+        "slug": "car_rent",
+        "category_id": 2
+    },
+    "7": {
+        "title_ru": "Общественный транспорт",
+        "title_en": "Public transport",
+        "slug": "public_transport",
+        "category_id": 2
+    },
+    "8": {
+        "title_ru": "Такси",
+        "title_en": "Taxi",
+        "slug": "taxi",
+        "category_id": 2
+    },
+    "9": {
+        "title_ru": "Транспорт",
+        "title_en": "Transport",
+        "slug": "travel_transport",
+        "category_id": 3
+    },
+    "10": {
+        "title_ru": "Проживание",
+        "title_en": "Accommodation",
+        "slug": "travel_accommodation",
+        "category_id": 3
+    },
+    "11": {
+        "title_ru": "Прочее",
+        "title_en": "Other",
+        "slug": "travel_other",
+        "category_id": 3
+    },
+    "12": {
+        "title_ru": "Налог",
+        "title_en": "Tax",
+        "slug": "tax",
+        "category_id": 4
+    },
+    "13": {
+        "title_ru": "Штраф",
+        "title_en": "Fine",
+        "slug": "fine",
+        "category_id": 4
+    },
+    "14": {
+        "title_ru": "Продукты",
+        "title_en": "Food",
+        "slug": "food",
+        "category_id": 5
+    },
+    "15": {
+        "title_ru": "Алкоголь",
+        "title_en": "Alcohol",
+        "slug": "alcohol",
+        "category_id": 5
+    },
+    "16": {
+        "title_ru": "Никотин",
+        "title_en": "Nicotine",
+        "slug": "nicotine",
+        "category_id": 5
+    },
+    "17": {
+        "title_ru": "Коммунальные услуги",
+        "title_en": "Utilities",
+        "slug": "utilities",
+        "category_id": 5
+    },
+    "18": {
+        "title_ru": "Аренда",
+        "title_en": "Rent",
+        "slug": "household_rent",
+        "category_id": 5
+    },
+    "19": {
+        "title_ru": "Ремонт",
+        "title_en": "Renovation",
+        "slug": "renovation",
+        "category_id": 5
+    },
+    "20": {
+        "title_ru": "Мебель",
+        "title_en": "Furniture",
+        "slug": "furniture",
+        "category_id": 5
+    },
+    "21": {
+        "title_ru": "Бытовая техника",
+        "title_en": "Appliances",
+        "slug": "aplliances",
+        "category_id": 5
+    },
+    "22": {
+        "title_ru": "Бытовые принадлежности",
+        "title_en": "Household supplies",
+        "slug": "household_supplies",
+        "category_id": 5
+    },
+    "23": {
+        "title_ru": "Кафе и рестораны",
+        "title_en": "Cafes and restaurants",
+        "slug": "cafes_restaurants",
+        "category_id": 6
+    },
+    "24": {
+        "title_ru": "Культура",
+        "title_en": "Culture",
+        "slug": "culture",
+        "category_id": 6
+    },
+    "25": {
+        "title_ru": "Развлечения",
+        "title_en": "Entertainment",
+        "slug": "entertainment",
+        "category_id": 6
+    },
+    "26": {
+        "title_ru": "Спорт",
+        "title_en": "Sports",
+        "slug": "sports",
+        "category_id": 6
+    },
+    "27": {
+        "title_ru": "Основное",
+        "title_en": "Main",
+        "slug": "main",
+        "category_id": 7
+    },
+    "28": {
+        "title_ru": "Дополнительное",
+        "title_en": "Extra",
+        "slug": "extra",
+        "category_id": 7
+    },
+    "29": {
+        "title_ru": "Семья и дети",
+        "title_en": "Family and children",
+        "slug": "family",
+        "category_id": 8
+    },
+    "30": {
+        "title_ru": "ДМС",
+        "title_en": "VMI",
+        "slug": "vmi",
+        "category_id": 9
+    },
+    "31": {
+        "title_ru": "Страхование авто",
+        "title_en": "Car insurance",
+        "slug": "car_insurance",
+        "category_id": 9
+    },
+    "32": {
+        "title_ru": "Страхование недвижимости",
+        "title_en": "Real estate insurance",
+        "slug": "estate_insurance",
+        "category_id": 9
+    },
+    "33": {
+        "title_ru": "Иное страхование",
+        "title_en": "Other insurance",
+        "slug": "other_insurance",
+        "category_id": 9
+    },
+    "34": {
+        "title_ru": "Парикмахерская",
+        "title_en": "Hairdressing",
+        "slug": "hairdressing",
+        "category_id": 10
+    },
+    "35": {
+        "title_ru": "Маникюр/педикюр",
+        "title_en": "Nails",
+        "slug": "nails",
+        "category_id": 10
+    },
+    "36": {
+        "title_ru": "Медицинская помощь",
+        "title_en": "Medical care",
+        "slug": "medical_care",
+        "category_id": 10
+    },
+    "37": {
+        "title_ru": "Лекарства",
+        "title_en": "Medicines",
+        "slug": "medicines",
+        "category_id": 10
+    },
+    "38": {
+        "title_ru": "Косметика",
+        "title_en": "Cosmetics",
+        "slug": "cosmetics",
+        "category_id": 10
+    },
+    "39": {
+        "title_ru": "Парфюмерия",
+        "title_en": "Perfumery",
+        "slug": "perfumery",
+        "category_id": 10
+    },
+    "40": {
+        "title_ru": "Психологическая помощь",
+        "title_en": "Psychological care",
+        "slug": "psychological",
+        "category_id": 10
+    },
+    "41": {
+        "title_ru": "Одежда",
+        "title_en": "Clothes",
+        "slug": "clothes",
+        "category_id": 11
+    },
+    "42": {
+        "title_ru": "Обувь",
+        "title_en": "Shoes",
+        "slug": "shoes",
+        "category_id": 11
+    },
+    "43": {
+        "title_ru": "Аксессуары",
+        "title_en": "Accessories",
+        "slug": "accessories",
+        "category_id": 11
+    },
+    "44": {
+        "title_ru": "Бижутерия",
+        "title_en": "Jewelry",
+        "slug": "jewerly",
+        "category_id": 11
+    },
+    "45": {
+        "title_ru": "Техника",
+        "title_en": "Device",
+        "slug": "device",
+        "category_id": 12
+    },
+    "46": {
+        "title_ru": "Мобильная связь и интернет",
+        "title_en": "Mobile communication and internet services",
+        "slug": "mobile_internet",
+        "category_id": 12
+    },
+    "47": {
+        "title_ru": "Онлайн-подписки",
+        "title_en": "Online subscriptions",
+        "slug": "online_subscriptions",
+        "category_id": 12
+    },
+    "48": {
+        "title_ru": "Инвестиции",
+        "title_en": "Investment",
+        "slug": "investment",
+        "category_id": 12
+    }
+}

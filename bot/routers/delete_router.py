@@ -1,143 +1,208 @@
-"""
-Package contains scripts to address delete queries to db. Supports user data deletion process.
-Runs on its own router - ``delete_router`` which must be included into main router or any other router
-that is included into main to be able to get and handle pending updates.
-"""
-import logging
-
-import asyncpg
 from aiogram import Router
 from aiogram.enums import ParseMode
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message
+from aiogram.types import CallbackQuery
 
-import db.user_operations
-import db.expense_limit_operations
-from bot.middleware.user_language import UserLanguageMiddleware
-from bot.middleware.db_connection import DBConnectionMiddleware
-from bot.states.registration import DataDeletionStates
-from bot.states.delete_expense_limit import DeleteExpenseLimitStates
-from bot.keyboards.bool_keyboard import generate_bool_keyboard
-from bot.keyboards.expense_limits_keyboard import generate_expense_limits_keyboard
-from bot.filters.user_exists import UserExists
-from bot.static.user_languages import USER_LANGUAGE_PREFERENCES
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from bot.fsm_states import DataDeletionStates
+from bot.fsm_states import DeleteExpenseLimitStates
+from bot.filters import UserExists
+from bot.keyboards import binary_keyboard
+from bot.keyboards import expense_limits_keyboard
 from bot.static.messages import DELETE_ROUTER_MESSAGES
+from bot.static.user_languages import USER_LANGUAGE_PREFERENCES
+
+from db import ExpenseLimit, BotUser
 
 
-logger = logging.getLogger('deleteRouter')
-logger.setLevel(logging.INFO)
-
-
-delete_router = Router()
-ul_middleware = UserLanguageMiddleware()
-delete_router.message.middleware(ul_middleware)
-delete_router.callback_query.middleware(ul_middleware)
-db_conn_middleware = DBConnectionMiddleware()
-delete_router.callback_query.middleware(db_conn_middleware)
-delete_router.message.middleware(db_conn_middleware)
-
-
-@delete_router.message(Command(commands=['delete_my_data', 'delete_expense_limit']),
-                       ~UserExists(), StateFilter(None))
-async def nothing_to_delete_message(message: Message, user_lang: str):
+class DeleteRouter(Router):
     """
-    Handler is triggered in case user requested data deletion while not being registered.
-    As far as the process is impossible, user is notified about the issue.
-    :param message: User message.
-    :param user_lang: User language.
-    :return: Message.
+    Router handles events that are connected with data deletion.
+    Commands are: delete_my_data and delete_expense_limit
+
+    On initialization of class object dispatcher is required to register message and callback handlers.
+    All handlers are located inside the class, registration is performed in ``register_handlers`` func.
     """
-    message_text = DELETE_ROUTER_MESSAGES['nothing_to_delete'][user_lang]
-    return await message.answer(message_text)
+    def __init__(self):
+        super().__init__()
+        self.register_handlers()
+        self.name = 'DeleteRouter'
 
+    def register_handlers(self):
+        """
+        Register this router handlers in dispatcher.
+        """
+        # User requests to delete their data, but there is nothing associated with the user
+        delete_commands = ['delete_my_data', 'delete_expense_limit']
+        self.message.register(self.nothing_to_delete, Command(commands=delete_commands),
+                              ~UserExists(), StateFilter(None))
 
-@delete_router.message(Command(commands=['delete_my_data']), UserExists(), StateFilter(None))
-async def delete_user_data(message: Message, state: FSMContext, user_lang: str):
-    """
-    In case there is user data to delete, user is asked to confirm their decision to prevent
-    accidental data deletion.
-    :param message: User message.
-    :param state: FSM context.
-    :param user_lang: User language.
-    :return: Message.
-    """
-    decision_keyboard = await generate_bool_keyboard(user_lang)
-    await state.set_state(DataDeletionStates.decision)
-    message_text = DELETE_ROUTER_MESSAGES['confirmation'][user_lang]
-    return await message.answer(message_text, reply_markup=decision_keyboard, parse_mode=ParseMode.HTML)
+        # Registered user requests to delete their data
+        # Ask for confirmation
+        self.message.register(self.user_data_deletion_confirmation, Command('delete_my_data'),
+                              UserExists(), StateFilter(None))
+        # Process confirmation
+        self.callback_query.register(self.delete_user_data, DataDeletionStates.decision)
 
+        # Registered user requests to delete one of their expense limits
+        # Get expense limit to delete
+        self.message.register(self.get_expense_limit_to_delete, Command(commands=['delete_expense_limit']),
+                              UserExists(), StateFilter(None))
+        # Perform deletion
+        self.callback_query.register(self.delete_expense_limit, DeleteExpenseLimitStates.get_user_title)
 
-@delete_router.callback_query(DataDeletionStates.decision)
-async def save_delete_choice(callback: CallbackQuery, state: FSMContext, user_lang: str, db_con: asyncpg.Connection):
-    """
-    Catches callback from user deletion decision. If user confirms their decision, all data
-    in database, including tables and records, is deleted, user preferred languages is dropped
-    from local data dictionary. Otherwise, data is kept.
+    @staticmethod
+    async def nothing_to_delete(message, user_lang):
+        """
+        Handler is triggered in case user requested data deletion while not being registered.
+        As far as the process is impossible, user is notified about the issue.
 
-    :param callback: Callback query.
-    :param state: FSM context.
-    :param user_lang: User language.
-    :param db_con: Database connection.
-    :return: Message.
-    """
-    # Remove inline keyboard anyway.
-    await callback.message.edit_reply_markup(reply_markup=None)
-    # User confirmed the decision.
-    if callback.data == 'true':
-        user_id = callback.from_user.id
-        # Successful deletion.
-        try:
-            await db.user_operations.delete_user_data(user_id, db_con)
-            del USER_LANGUAGE_PREFERENCES[user_id]
-            await state.clear()
-            message_text = DELETE_ROUTER_MESSAGES['success'][user_lang]
-            return await callback.message.answer(message_text)
-        # Internal error.
-        except Exception as e:
-            delete_router.error(e)
-            message_text = DELETE_ROUTER_MESSAGES['error'][user_lang]
-            await state.clear()
-            return await callback.message.answer(message_text)
-    # User canceled the decision.
-    else:
-        message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
-        await state.clear()
-        return await callback.message.answer(message_text)
+        Args:
+            message (Message): Message.
+            user_lang (str): User language.
 
-
-@delete_router.message(Command(commands=['delete_expense_limit']), UserExists(), StateFilter(None))
-async def get_expense_limit_title_to_delete(message: Message, user_lang: str,
-                                            db_con: asyncpg.Connection, state: FSMContext):
-    keyboard = await generate_expense_limits_keyboard(message.from_user.id, db_con, user_lang)
-    if keyboard is None:
-        message_text = DELETE_ROUTER_MESSAGES['no_limits'][user_lang]
+        Returns:
+            Message: Answer message.
+        """
+        message_text = DELETE_ROUTER_MESSAGES['nothing_to_delete'][user_lang]
         return await message.answer(message_text)
-    else:
-        message_text = DELETE_ROUTER_MESSAGES['limit_title'][user_lang]
-        await state.set_state(DeleteExpenseLimitStates.get_user_title)
-        await message.answer(message_text, reply_markup=keyboard)
 
+    @staticmethod
+    async def user_data_deletion_confirmation(message: Message, state: FSMContext, user_lang: str):
+        """
+        Delete all user's data - step 1 / 2
 
-@delete_router.callback_query(DeleteExpenseLimitStates.get_user_title)
-async def delete_chosen_expense_limit(callback: CallbackQuery, state: FSMContext, user_lang: str,
-                                      db_con: asyncpg.Connection):
-    # If user pushed cancel button, process is aborted.
-    if callback.data == 'cancel_limit_delete':
-        message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
-        await state.clear()
-        return await callback.message.answer(message_text)
-    # Otherwise, bot is trying to delete data from db
-    try:
-        delete_status = db.expense_limit_operations.delete_expense_limit(callback.from_user.id, callback.data, db_con)
-        logger.info('Delete expense_limit')
-    except Exception as e:
-        delete_router.error(e)
-        delete_status = False
+        In case there is user data to delete, user is asked to confirm their decision to prevent accidental deletion.
 
-    if delete_status:
-        message_text = DELETE_ROUTER_MESSAGES['limit_delete_success'][user_lang]
-    else:
-        message_text = DELETE_ROUTER_MESSAGES['limit_delete_fail'][user_lang]
-    await state.clear()
-    await callback.message.answer(message_text)
+        Args:
+            message (Message): Message.
+            state (FSMContext): FSMContext instance.
+            user_lang (str): User language.
+
+        Returns:
+            Message: Answer message with confirmation inline keyboard.
+        """
+        first_button_data = ('Удалить мои данные', 'Delete my data', 'delete')
+        second_button_data = ('Отменить', 'Cancel', 'cancel')
+        decision_keyboard = binary_keyboard(user_language_code=user_lang, first_button_data=first_button_data,
+                                            second_button_data=second_button_data)
+        await state.set_state(DataDeletionStates.decision)
+        message_text = DELETE_ROUTER_MESSAGES['confirmation'][user_lang]
+        return await message.answer(message_text, reply_markup=decision_keyboard, parse_mode=ParseMode.HTML)
+
+    @staticmethod
+    async def delete_user_data(callback, state, user_lang, async_session):
+        """
+        Delete all user's data - step 2 / 2
+
+        Catches callback from user deletion decision. If user confirms their decision, all data
+        in database, including tables and records, is deleted, user preferred languages is dropped
+        from local data dictionary. Otherwise, data is kept.
+
+        Args:
+            callback (CallbackQuery): Callback query.
+            state (FSMContext): FSMContext instance.
+            user_lang (str): User language.
+            async_session (async_sessionmaker[AsyncSession]): AsyncSession instance.
+
+        Returns:
+            Message: Answer message.
+        """
+        # Remove inline keyboard anyway.
+        await callback.message.edit_reply_markup(reply_markup=None)
+
+        # User confirmed the decision.
+        if callback.data == 'delete':
+            user_id = callback.from_user.id
+
+            # Successful deletion.
+            try:
+                # Drop user's data queries
+                await BotUser.delete(tg_id=user_id, async_session=async_session)
+                # Delete user specified language from languages dict
+                del USER_LANGUAGE_PREFERENCES[user_id]
+                await state.clear()
+                message_text = DELETE_ROUTER_MESSAGES['success'][user_lang]
+                return await callback.message.edit_text(message_text)
+
+            # Internal error.
+            except Exception as e:
+                message_text = DELETE_ROUTER_MESSAGES['error'][user_lang]
+                await state.clear()
+                return await callback.message.edit_text(message_text)
+
+        # User canceled the decision.
+        else:
+            message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
+            await state.clear()
+            return await callback.message.edit_text(message_text)
+
+    @staticmethod
+    async def get_expense_limit_to_delete(message, user_lang, async_session, state):
+        """
+        Delete user's expense limit - step 1 / 2
+
+        Args:
+            message (Message): Message.
+            user_lang (str): User language.
+            async_session (async_sessionmaker[AsyncSession]): AsyncSession instance.
+            state (FSMContext): FSMContext instance.
+
+        Returns:
+            Message: Answer message.
+        """
+        # Get limits keyboard
+        keyboard = await expense_limits_keyboard(user_id=message.from_user.id, user_lang=user_lang,
+                                                 async_session=async_session, cancel_button=True)
+
+        # User has no limits to delete and there is nothing to delete
+        if keyboard is None:
+            message_text = DELETE_ROUTER_MESSAGES['no_limits'][user_lang]
+            return await message.answer(message_text)
+
+        # Set state to wait for user selection and send keyboard
+        else:
+            message_text = DELETE_ROUTER_MESSAGES['limit_title'][user_lang]
+            await state.set_state(DeleteExpenseLimitStates.get_user_title)
+            await message.answer(message_text, reply_markup=keyboard)
+
+    @staticmethod
+    async def delete_expense_limit(callback, user_lang, state, async_session):
+        """
+        Delete user's expense limit - step 2 / 2
+
+        Processes user choice: if cancel button is pressed, aborts the process. Otherwise, tries to delete
+        specified expense limit.
+
+        Args:
+            callback (CallbackQuery): Callback query.
+            user_lang (str): User language.
+            state (FSMContext): FSMContext instance.
+            async_session (async_sessionmaker[AsyncSession]): AsyncSession instance.
+
+        Returns:
+            Message: Answer message.
+        """
+        await callback.message.edit_reply_markup(reply_markup=None)
+
+        # If user pushed cancel button, process is aborted.
+        if callback.data == 'cancel_limit':
+            message_text = DELETE_ROUTER_MESSAGES['cancel'][user_lang]
+            await state.clear()
+            return await callback.message.edit_text(message_text)
+
+        # Otherwise, bot is trying to delete data from db
+        else:
+            try:
+                await ExpenseLimit.delete_by_user_id_and_title(user_id=callback.from_user.id,
+                                                               user_title=callback.data, async_session=async_session)
+                message_text = DELETE_ROUTER_MESSAGES['limit_delete_success'][user_lang]
+            except Exception as e:
+                message_text = DELETE_ROUTER_MESSAGES['limit_delete_fail'][user_lang]
+            await state.clear()
+            return await callback.message.edit_text(message_text)

@@ -1,0 +1,67 @@
+{
+    "1": {
+        "title_ru": "Без названия",
+        "title_en": "Untitled",
+        "slug": "untitled"
+    },
+    "2": {
+        "title_ru": "Транспорт",
+        "title_en": "Transport",
+        "slug": "transport"
+    },
+    "3": {
+        "title_ru": "Путешествия",
+        "title_en": "Travel",
+        "slug": "travel"
+    },
+    "4": {
+        "title_ru": "Обязательные",
+        "title_en": "Compulsory",
+        "slug": "compulsory"
+    },
+    "5": {
+        "title_ru": "Быт",
+        "title_en": "Houshold",
+        "slug": "household"
+    },
+    "6": {
+        "title_ru": "Досуг",
+        "title_en": "Leisure",
+        "slug": "leisure"
+    },
+    "7": {
+        "title_ru": "Образование",
+        "title_en": "Education",
+        "slug": "education"
+    },
+    "8": {
+        "title_ru": "Семья и дети",
+        "title_en": "Family and children",
+        "slug": "family"
+    },
+    "9": {
+        "title_ru": "Страхование",
+        "title_en": "Insurance",
+        "slug": "insurance"
+    },
+    "10": {
+        "title_ru": "Красота и здоровье",
+        "title_en": "Health and beauty",
+        "slug": "health"
+    },
+    "11": {
+        "title_ru": "Одежда и аксессуары",
+        "title_en": "Clothes and accessories",
+        "slug": "clothes"
+    },
+    "12": {
+        "title_ru": "Цифровая эпоха",
+        "title_en": "Digital age",
+        "slug": "digital"
+    },
+    "13": {
+        "title_ru": "Инвестиции",
+        "title_en": "Investment",
+        "slug": "investment"
+    }
+}
