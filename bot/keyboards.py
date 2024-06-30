@@ -1,13 +1,32 @@
-import datetime as dt
-
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from db import ExpenseCategory, ExpenseSubcategory, ExpenseLimit, ExpenseLimitPeriod
+from configs import async_sess_maker
+
+
+def one_button_keyboard(labels, callback_data, user_language):
+    """
+    Generates one button keyboard with specified label and callback data.
+
+    Args:
+        labels (tuple[str, str]): Russian label, english label.
+        callback_data (str): Callback data for the only button.
+        user_language (str): User language to select label.
+
+    Returns:
+        InlineKeyboardMarkup: Keyboard markup.
+    """
+    # Create button
+    button_text = labels[0] if user_language == 'ru' else labels[1]
+    button = InlineKeyboardButton(text=button_text, callback_data=callback_data)
+    # Create keyboard
+    skip_keyboard = InlineKeyboardBuilder()
+    skip_keyboard.add(button)
+
+    return skip_keyboard.as_markup()
 
 
 def binary_keyboard(user_language_code, first_button_data, second_button_data):
@@ -35,29 +54,30 @@ def binary_keyboard(user_language_code, first_button_data, second_button_data):
     return keyboard.as_markup()
 
 
-def one_button_keyboard(labels, callback_data, user_language):
+def multi_button_keyboard(user_lang, buttons_data, one_row_count=2):
     """
-    Generates one button keyboard with specified label and callback data.
+    Generates multiple button keyboard with specified labels and callback data.
 
     Args:
-        labels (tuple[str, str]): Russian label, english label.
-        callback_data (str): Callback data for the only button.
-        user_language (str): User language to select label.
+        user_lang (str): User language to select labels.
+        buttons_data (tuple[tuple[str, str, str]]): Russian label, english label, callback data.
+        one_row_count (int): Number of buttons in one row to adjust layout.
 
     Returns:
         InlineKeyboardMarkup: Keyboard markup.
     """
-    # Create button
-    button_text = labels[0] if user_language == 'ru' else labels[1]
-    button = InlineKeyboardButton(text=button_text, callback_data=callback_data)
-    # Create keyboard
-    skip_keyboard = InlineKeyboardBuilder()
-    skip_keyboard.add(button)
+    keyboard = InlineKeyboardBuilder()
 
-    return skip_keyboard.as_markup()
+    for button in buttons_data:
+        text = button[0] if user_lang == 'ru' else button[1]
+        button = InlineKeyboardButton(text=text, callback_data=button[2])
+        keyboard.add(button)
+
+    keyboard.adjust(one_row_count)
+    return keyboard.as_markup()
 
 
-async def categories_keyboard(user_language_code, async_session):
+async def categories_keyboard(user_language_code):
     """
     Generates categories keyboard with labels and callback data from database.
 
@@ -67,13 +87,12 @@ async def categories_keyboard(user_language_code, async_session):
 
     Args:
         user_language_code (str): User language.
-        async_session (async_sessionmaker[AsyncSession]): Async session to query data from DB.
 
     Returns:
         InlineKeyboardMarkup: Keyboard markup.
     """
     # Get dict of categories from DB
-    categories = await ExpenseCategory.get_all_categories(async_session=async_session)
+    categories = await ExpenseCategory.get_all_categories()
 
     # Create keyboard builder
     categories_keyboard = InlineKeyboardBuilder()
@@ -83,7 +102,7 @@ async def categories_keyboard(user_language_code, async_session):
             button_text = category_data[user_language_code]
         except KeyError:
             button_text = category_data['en']
-        button_callback = f'category:{category_id}'
+        button_callback = f'category:{category_id}:{button_text}'
         button = InlineKeyboardButton(text=button_text, callback_data=button_callback)
         categories_keyboard.add(button)
     # Adjust layout
@@ -92,7 +111,7 @@ async def categories_keyboard(user_language_code, async_session):
     return categories_keyboard.as_markup()
 
 
-async def subcategories_keyboard(category, user_language_code, async_session):
+async def subcategories_keyboard(category, user_language_code, end_button=False):
     """
     Generates subcategories keyboard with labels and callback data from database.
 
@@ -103,13 +122,13 @@ async def subcategories_keyboard(category, user_language_code, async_session):
     Args:
         category (ExpenseCategory | int): Expense Category object or category id value to query subcategories.
         user_language_code (str): User language.
-        async_session (async_sessionmaker[AsyncSession]): Async session to query data from DB.
+        end_button (bool): Whether end button is enabled or not.
 
     Returns:
         InlineKeyboardMarkup: Keyboard markup.
     """
     # Get subcategories data from DB
-    subcategories = await ExpenseSubcategory.get_by_category(category=category, async_session=async_session)
+    subcategories = await ExpenseSubcategory.get_by_category(category=category)
 
     # Create keyboard
     keyboard = InlineKeyboardBuilder()
@@ -118,7 +137,7 @@ async def subcategories_keyboard(category, user_language_code, async_session):
             button_text = subcategory_data[user_language_code]
         except KeyError:
             button_text = subcategory_data['en']
-        button_callback = f'subcategory:{subcategory_id}'
+        button_callback = f'subcategory:{subcategory_id}:{button_text}'
         button = InlineKeyboardButton(text=button_text, callback_data=button_callback)
         keyboard.add(button)
     # Add "back to categories" button
@@ -126,13 +145,18 @@ async def subcategories_keyboard(category, user_language_code, async_session):
     back_button = InlineKeyboardButton(text=back_to_categories_text, callback_data='back')
     keyboard.add(back_button)
 
+    if end_button:
+        end_button_text = 'Сохранить' if user_language_code == 'ru' else 'Save'
+        end_button_ = InlineKeyboardButton(text=end_button_text, callback_data='end')
+        keyboard.add(end_button_)
+
     # Adjust markup
     keyboard.adjust(2)
 
     return keyboard.as_markup()
 
 
-async def expense_limits_keyboard(user_id, user_lang, async_session, cancel_button=True):
+async def expense_limits_keyboard(user_id, user_lang, cancel_button=True):
     """
     Generates expense limits keyboard with labels and callback data from database.
 
@@ -143,14 +167,13 @@ async def expense_limits_keyboard(user_id, user_lang, async_session, cancel_butt
     Args:
         user_id (int): User id.
         user_lang (str): User language.
-        async_session (async_sessionmaker[AsyncSession]): Async session to query data from DB.
         cancel_button (bool): If cancel button should be added.
 
     Returns:
         InlineKeyboardMarkup | None: Keyboard markup, if any expense limit exists, otherwise None.
     """
     # Get user limits from database
-    user_limits = await ExpenseLimit.select_by_user_id(user_id=user_id, async_session=async_session)
+    user_limits = await ExpenseLimit.select_by_user_id(user_id=user_id)
     if len(user_limits) == 0:
         return None
 
@@ -173,7 +196,7 @@ async def expense_limits_keyboard(user_id, user_lang, async_session, cancel_butt
     return keyboard.as_markup()
 
 
-async def period_keyboard(user_language_code, async_session):
+async def period_keyboard(user_language_code):
     """
     Generates expense limit period options inline keyboard.
 
@@ -182,21 +205,21 @@ async def period_keyboard(user_language_code, async_session):
 
     Args:
         user_language_code (str): User language.
-        async_session (async_sessionmaker[AsyncSession]): Async session to query data from DB.
 
     Returns:
         InlineKeyboardMarkup: Keyboard markup.
     """
     # Query all limits
-    async with async_session() as session:
-        data = await session.execute(select(ExpenseLimit).order_by(ExpenseLimitPeriod.period.asc()))
-    existing_limits = data.all()
+    query = select(ExpenseLimitPeriod).order_by(ExpenseLimitPeriod.period.asc())
+    async with async_sess_maker() as session:
+        data = await session.execute(query)
+    existing_limits = data.scalars()
 
     # Create buttons
     buttons = []
     for lim in existing_limits:
         button_text = f'{lim.period} дней' if user_language_code == 'ru' else f'{lim.period} days'
-        button = InlineKeyboardButton(text=button_text, callback_data=f'period:{lim.id}')
+        button = InlineKeyboardButton(text=button_text, callback_data=f'period:{lim.id}:{lim.period}')
         buttons.append(button)
 
     # Create keyboard

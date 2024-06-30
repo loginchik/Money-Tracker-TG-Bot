@@ -3,26 +3,37 @@ Entry point for bot application to run.
 """
 
 import asyncio
+import os
+
+from aiohttp import web
 from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import SimpleEventIsolation
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.enums import ParseMode
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy import create_engine
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from loguru import logger
 
 from bot.middleware import UserLanguageMiddleware
-from bot.routers.delete_router import DeleteRouter
-from bot.routers.export_router import ExportRouter
-from bot.routers.general_router import GeneralRouter
-from bot.routers.new_router import NewRecordRouter
+from bot.routers import DeleteRouter, ExportRouter, GeneralRouter, NewRecordRouter, StatsRouter
 from bot.static.commands import en_commands_list, ru_commands_list
-from db.connection import database_url
-from db import setup_schemas, insert_or_update_static
-from configs import BOT_TOKEN, BOT_ADMIN
+from db import insert_or_update_static
+
+from configs import (BOT_TOKEN, BOT_ADMIN,
+                     scheduler, sync_engine, async_sess_maker,
+                     WEBAPP_HOST, WEBAPP_PORT, WEBHOOK_URL,
+                     DEBUG)
+
+
+os.makedirs('logs', exist_ok=True)
+logger.configure(handlers=[
+    {
+        'sink': 'logs/{time:%Y%m%d}.log',
+        'level': 'DEBUG',
+        'rotation': '00:00'
+    }
+])
 
 
 async def main_bot_process():
@@ -50,17 +61,7 @@ async def main_bot_process():
     await bot.set_my_commands(commands=en_commands_list())
     logger.debug('Set bot commands')
 
-    # Create engines and sessionmaker to perform database actions in bot
-    setup_schemas(test_mode=False, drop_first=False)
-
-    sync_engine = create_engine(database_url(async_=False))
-    logger.info('Created sync engine connection with DB')
-    async_engine = create_async_engine(database_url(async_=True))
-    logger.info('Created async engine connection with DB')
-    async_sess_maker = async_sessionmaker(bind=async_engine)
-    logger.info('Created async session maker bind to async session')
-
-    await insert_or_update_static(async_sess_maker)
+    await insert_or_update_static()
 
     # Create storage
     storage = MemoryStorage()
@@ -76,11 +77,13 @@ async def main_bot_process():
     export_router = ExportRouter()
     general_router = GeneralRouter()
     new_router = NewRecordRouter()
-    dispatcher.include_routers(new_router, export_router, delete_router, general_router)
-    logger.debug(f'Added {delete_router.name}, {export_router.name}, {general_router.name}, {new_router.name} to dispatcher')
+    stats_router = StatsRouter()
+    routers = [new_router, export_router, delete_router, stats_router, general_router]
+    dispatcher.include_routers(*routers)
+    logger.debug(f'Added {", ".join([r.name for r in routers])} to dispatcher')
 
     # Create user language middleware object assigned to same async_sessionmaker as bot
-    user_lang_middleware = UserLanguageMiddleware(async_session_maker=async_sess_maker)
+    user_lang_middleware = UserLanguageMiddleware()
     # Register user language middleware
     dispatcher.message.middleware.register(user_lang_middleware)
     dispatcher.callback_query.middleware.register(user_lang_middleware)
@@ -93,7 +96,16 @@ async def main_bot_process():
     # Clear pending updates
     await bot.delete_webhook(drop_pending_updates=True)
     logger.debug('Deleted pending updates')
-    await dispatcher.start_polling(bot, debug=True)
+    scheduler.start()
+
+    if DEBUG:
+        await dispatcher.start_polling(bot, debug=DEBUG)
+    else:
+        app = web.Application()
+        webhook_requests_handler = SimpleRequestHandler(dispatcher=dispatcher, bot=bot, handle_in_background=False)
+        webhook_requests_handler.register(app=app, path=WEBHOOK_URL)
+        setup_application(app=app, dispatcher=dispatcher, bot=bot)
+        web.run_app(app, host=WEBAPP_HOST, port=WEBAPP_PORT)
 
 
 if __name__ == '__main__':

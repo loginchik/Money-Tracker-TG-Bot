@@ -16,6 +16,10 @@ class ExportStates(StatesGroup):
     export_incomes = State()
 
 
+class NewChoice(StatesGroup):
+    get_item = State()
+
+
 class NewExpenseStates(StatesGroup):
     """
     States group for new expense creation process.
@@ -25,6 +29,7 @@ class NewExpenseStates(StatesGroup):
     get_subcategory = State()
     get_datetime = State()
     get_location = State()
+    get_confirmation = State()
 
 
 class NewExpenseLimitStates(StatesGroup):
@@ -39,6 +44,7 @@ class NewExpenseLimitStates(StatesGroup):
     get_limit_value = State()
     get_end_date = State()
     get_cumulative = State()
+    get_confirmation = State()
 
 
 class NewIncomeStates(StatesGroup):
@@ -48,6 +54,7 @@ class NewIncomeStates(StatesGroup):
     get_money_amount = State()
     get_active_status = State()
     get_event_date = State()
+    get_confirmation = State()
 
 
 class RegistrationStates(StatesGroup):

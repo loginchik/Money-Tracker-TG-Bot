@@ -1,0 +1,50 @@
+{
+    "add": {
+        "en": "Add new expense / income /expense limit",
+        "ru": "Добавить новый расход / доход / предел расходов",
+        "en_long": "Log new expense, income, or expense limit. Expense limits don't affect expense logging but help to keep track of expenses by subcategories. Expense limits are set for a specified period of time. Expired limits are deleted automatically. /abort stops the process and erases temp data (previously created records won't change).",
+        "ru_long": "Добавить новый расход, доход или предел расходов. Пределы расходов не ограничивают возможность вносить расходы, но помогают контролировать их. Пределы расходов устанавливаются на определённый временной период. Просроченные пределы удаляются автоматически. Команда /abort прервёт процесс и удалит все временные данные (ранее созданные записи не пострадают)."
+    },
+    "delete_expense_limit": {
+        "en": "Delete active expense limit",
+        "ru": "Удалить предел расходов",
+        "en_long": "Delete active expense limit before it runs out of date",
+        "ru_long": "Удалить предел расходов до того, как он выйдет из срока годности"
+    },
+    "stats": {
+        "en": "Get statistics",
+        "ru": "Получить статистику",
+        "en_long": "Get account statistics, statistics of one-created expense limits. Also available: visualization of expenses in last 30 days and visualization of incomes in last 365 days",
+        "ru_long": "Получить статистику пользователя, созданных пользователем пределов расходов, а также визуализация статистики расходов за последние 30 дней и доходов за последние 365 дней"
+    },
+    "help": {
+        "en": "Get help on bot functions and commands",
+        "ru": "Справка о функциях и командах бота",
+        "en_long": null,
+        "ru_long": null
+    },
+    "about": {
+        "en": "About the project",
+        "ru": "О проекте",
+        "en_long": "Project goals and history.",
+        "ru_long": "История и цели проекта."
+    },
+    "abort": {
+        "en": "Abort current process and erase temp data",
+        "ru": "Прервать текущий процесс и удалить временные данные",
+        "en_long": null,
+        "ru_long": null
+    },
+    "export_my_data": {
+        "en": "Export all one-related expenses and incomes into files",
+        "ru": "Экспортировать все связанные с пользователем расходы и доходы",
+        "en_long": "Export all one-created expenses as geojson-file with location info and csv-file with no geographical data. One-created incomes are also exported in csv format",
+        "ru_long": "Экспортировать все внесённые пользователем расходы в два файла: geojson с геометрическими данными о вводимой локации и csv без данных о локации. Также экспортируются все внесённые пользователем доходы в формате csv"
+    },
+    "delete_my_data": {
+        "en": "Delete all one-related data from database",
+        "ru": "Удалить все связанные с пользователем данные из базы данных",
+        "en_long": "Delete all the user data. The action cannot be undone.",
+        "ru_long": "Удалить все данные пользователя. Действие необратимо."
+    }
+}
