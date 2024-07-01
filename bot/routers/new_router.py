@@ -95,16 +95,16 @@ class NewRecordRouter(Router, CommonRouter):
         if current_state is not None:
             # Export process cannot be aborted
             if current_state in [st for st in ExportStates.__state_names__]:
-                message_text = m_texts['aborted'].__getattribute__(user_lang)
+                message_text = m_texts['impossible'].__getattribute__(user_lang)
                 return await message.answer(message_text)
             # Other processes can
             else:
                 await state.clear()
-                message_text = m_texts['nothing'].__getattribute__(user_lang)
+                message_text = m_texts['aborted'].__getattribute__(user_lang)
                 return await message.answer(message_text)
         # There is no state set
         else:
-            message_text = m_texts['impossible'].__getattribute__(user_lang)
+            message_text = m_texts['nothing'].__getattribute__(user_lang)
             return await message.answer(message_text)
 
 
@@ -113,6 +113,9 @@ class RegistrationRouter(Router, CommonRouter):
         super().__init__()
         self.name = 'RegistrationRouter'
         self.register_handlers()
+
+        self.register_callback = 'register'
+        self.cancel_register_callback = 'cancel_register'
 
     def register_handlers(self):
         self.message.register(self.start, Command(commands=['add']), ~UserExists(), StateFilter(None))
@@ -158,8 +161,7 @@ class RegistrationRouter(Router, CommonRouter):
         await state.update_data(lang=callback.data)
         return await self.get_agreement(callback.message, state, callback.data)
 
-    @staticmethod
-    async def get_agreement(message: Message, state: FSMContext, user_lang: str):
+    async def get_agreement(self, message, state, user_lang):
         """
         Sets RegistrationStates.decision state and asks if user wants to register in database.
 
@@ -173,8 +175,8 @@ class RegistrationRouter(Router, CommonRouter):
         """
         keyboard = keyboards.binary_keyboard(
             user_language_code=user_lang,
-            first_button_data=('Создать аккаунт', 'Register', 'register'),
-            second_button_data=('Отмена', 'Cancel', 'cancel_registration')
+            first_button_data=('Создать аккаунт', 'Register', self.register_callback),
+            second_button_data=('Отмена', 'Cancel', self.cancel_register_callback)
         )
         await state.set_state(RegistrationStates.decision)
 
@@ -224,7 +226,7 @@ class RegistrationRouter(Router, CommonRouter):
         }
 
         # User registration
-        if decision == 'register':
+        if decision == self.register_callback:
             # Gather user data to insert into DB
             state_data = await state.get_data()
             # Create user and notify the user
@@ -244,8 +246,9 @@ class RegistrationRouter(Router, CommonRouter):
                 return await callback.message.edit_text(message_text)
             finally:
                 await state.clear()
+
         # User doesn't want to register
-        elif decision == 'cancel_register':
+        elif decision == self.cancel_register_callback:
             message_text = m_texts['cancel'].__getattribute__(user_lang)
             await state.clear()
             return await callback.message.edit_text(message_text)

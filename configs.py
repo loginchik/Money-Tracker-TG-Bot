@@ -32,7 +32,8 @@ TEST_DB_NAME = secrets['DB_NAME_TEST']
 BOT_TOKEN = secrets['BOT_TOKEN']
 BOT_ADMIN = secrets['BOT_ADMIN']
 
-WEBHOOK_URL = f"{secrets['WEBHOOK_HOST']}{secrets['WEBHOOK_PATH']}"
+WEBHOOK_PATH = secrets['WEBHOOK_PATH']
+WEBHOOK_URL = f"{secrets['WEBHOOK_HOST']}{WEBHOOK_PATH}"
 WEBAPP_HOST = secrets['WEBAPP_HOST']
 WEBAPP_PORT = secrets['WEBAPP_PORT']
 
